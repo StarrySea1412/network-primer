@@ -57,7 +57,7 @@ p{margin:0 0 1.15em}
 @media (max-width:900px){.hero{grid-template-columns:1fr}}
 .sect{padding-block:38px 8px;border-top:1.5px solid var(--line)}
 .sect-head{display:grid;grid-template-columns:64px 1fr;gap:16px;align-items:start;max-width:820px;margin:0 auto 18px}
-.sect-num{font-family:var(--mono);font-size:12px;color:var(--red);border-top:2px solid var(--red);padding-top:10px;line-height:1.5;letter-spacing:.06em}
+.sect-num{font-family:var(--mono);font-size:12px;color:var(--red);border-top:2px solid var(--red);padding-top:10px;line-height:1.5;letter-spacing:.06em;white-space:nowrap}
 .sect-num b{display:block;font-size:26px;color:var(--ink);font-weight:800;line-height:1.1}
 .sect-head h2{font-size:clamp(23px,2.8vw,32px);margin:0;font-weight:800;letter-spacing:-.015em;line-height:1.3}
 .sect-head p{margin:6px 0 0;color:var(--muted);font-size:13.5px;line-height:1.75}
@@ -128,8 +128,8 @@ p{margin:0 0 1.15em}
     <h1>你按下回车<br/><em>之后</em>发生的事</h1>
     <p class="dek">你输入网址、按下回车——四百毫秒后，页面出现在眼前。这四百毫秒里，一个请求被翻译成地址、握了三次手、套了四层信封、被十几台路由器接力，还要经历拥塞窗口的锯齿与 TLS 的密钥交换。这篇把每一站拆开给你玩：<b>八段确定性模拟，全部跑真实算法</b>——慢启动、AIMD、HSL 没有假数据，ETag 协商是真的状态机。</p>
     <div class="hero-meta">
-      <span class="pill"><b>8</b> 段互动</span>
-      <span class="pill">DNS → 握手 → 拥塞 → 封装 → HTTP 缓存 → TLS → HTTP/2 → 路由</span>
+      <span class="pill"><b>13</b> 段互动</span>
+      <span class="pill">DNS → TCP → 拥塞 → 封装 → 缓存 → TLS → H2 → 路由 → CORS → WS → CDN → QUIC</span>
       <span class="pill">零依赖 · 确定性模拟 · 真实算法</span>
     </div>
   </div>
@@ -284,7 +284,7 @@ p{margin:0 0 1.15em}
     <div class="prose"><p>MSS 1460 = MTU 1500 − IP 头 20 − TCP 头 20。你的 12.4KB HTML 会被切成 <code>⌈12.4KB / 1460⌉ = 9</code> 个段——每段独立编序号、独立确认。若中间某条链路 MTU 只有 1492（PPPoE），路由器要么分片（IP 头里 DF 标志禁止时分片，允许时拆成多片、任一片丢则整包重传）要么回 ICMP「需要分片」——<b>PMTUD 黑洞</b>是 VPN 用户「能连但打不开网页」的经典病因。</p>
     <p>再算一笔<b>头部税</b>：1460B 载荷配 54B 开销，效率 96%——很健康。但发一个 41 字节的 TCP 纯 ACK（无载荷），开销占比 132%。<em>小包的头部税远重于大包</em>，这就是 Nagle 算法（攒小包合并发）与它和延迟敏感场景冲突（TCP_NODELAY）永恒拉扯的原因。</p></div>
     <div class="demo">
-      <div class="demo-head"><span class="demo-tag">互动 03 · 封装台</span><span class="demo-title">一层一层套，一层一层拆<span class="hint">发送方 ⇄ 接收方</span></span></div>
+      <div class="demo-head"><span class="demo-tag">互动 04 · 封装台</span><span class="demo-title">一层一层套，一层一层拆<span class="hint">发送方 ⇄ 接收方</span></span></div>
       <div class="demo-body">
         <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center">
           <div class="stage" style="min-height:250px"><svg id="en-svg" viewBox="0 0 400 260" role="img" aria-label="发送方封装过程"></svg></div>
@@ -429,7 +429,7 @@ p{margin:0 0 1.15em}
     <p>但 traceroute 的输出里有大量「假象」需要解读：<b>某跳全是 <code>* * *</code> 不一定是故障</strong>——很多核心路由器对 ICMP TTL 超时做了限速（甚至完全不回），流量照常通过；<b>某些跳的延迟突然变小</b>也不是时光倒流——各跳回包走的不同路径，RTT 本来就不能逐跳相加。读 traceroute 是读<b>趋势</strong>，不是读绝对值。</p>
     <p>而「路由表是谁写的」这个问题指向互联网的另一个层：<b>BGP（边界网关协议）</b>。自治系统（AS）之间用 BGP 互相广播「我能到达这些网段」，全球几十万条路由公告构成的这张表，就是互联网的骨架。2021 年 Facebook 断网 6 小时的直接原因就是一次 BGP 回收——把自家路由撤了，全球 DNS 都找不到它。<em>网络层的「DNS 挂了」往往其实是「BGP 挂了」。</em></p></div>
     <div class="demo">
-      <div class="demo-head"><span class="demo-tag">互动 05 · 路由追踪台</span><span class="demo-title">一跳一跳，把路走出来<span class="hint">点「发一个包」</span></span></div>
+      <div class="demo-head"><span class="demo-tag">互动 08 · 路由追踪台</span><span class="demo-title">一跳一跳，把路走出来<span class="hint">点「发一个包」</span></span></div>
       <div class="demo-body">
         <div class="stage"><svg id="tr-svg" viewBox="0 0 880 300" role="img" aria-label="路由追踪：包沿拓扑逐跳前进"></svg></div>
         <div class="controls">
@@ -463,7 +463,7 @@ p{margin:0 0 1.15em}
       </div>
     </div>
     <div class="demo">
-      <div class="demo-head"><span class="demo-tag">互动 07 · 页面加载瀑布</span><span class="demo-title">七种资源 × 四段旅程 × 三种开关<span class="hint">拖协议 / 缓存 / 慢资源</span></span></div>
+      <div class="demo-head"><span class="demo-tag">互动 09 · 页面加载瀑布</span><span class="demo-title">七种资源 × 四段旅程 × 三种开关<span class="hint">拖协议 / 缓存 / 慢资源</span></span></div>
       <div class="demo-body">
         <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
           <div class="ctl-btn" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -485,12 +485,153 @@ p{margin:0 0 1.15em}
     </div>
     <div class="prose"><p>读瀑布图的三个动作：<b>找最长的那根条</strong>（瓶颈）、<b>看有没有把红线拆开</strong>（DNS/TCP/TLS 是否复用）、<b>数最后一块绿色出现的时间</strong>（首屏完成点）。所有性能优化的效果，最终都要在这张图上兑现。</p></div>
   </div>
-</section><section class="sect" id="s9">
+</section><section class="sect" id="s10">
   <div class="wrap">
     <div class="sect-head">
       <div class="sect-num"><b>09</b>第九章</div>
-      <div><h2>速查卡：按下回车后的八件事</h2>
-        <p>如果只带走八句——</p>
+      <div><h2>CORS：跨域请求的门卫</h2>
+        <p>前端最常见的报错不是超时，是那行红色的 CORS policy blocked——但九成开发者说不清它到底在拦什么。</p>
+      </div>
+    </div>
+    <div class="prose"><p>CORS 不是防火墙，是一套<b>浏览器自愿执行的协商协议</b>。服务器没说「允许」，浏览器就拒绝把响应交给你的 JS——注意，<em>请求其实发出去了，服务器也响应了，只是浏览器把结果扣下了</em>。这是最反直觉的地方：Network 面板里明明是 200 OK，代码里拿到的却是一个报错。</p>
+    <p>规则只有三条：①<b>同源</b>（协议+域名+端口全一致）直接放行；②<b>简单请求</b>（GET/POST + 常见 Content-Type、不带自定义头）直接发，但响应头必须带 <code>Access-Control-Allow-Origin</code> 浏览器才把结果交给 JS；③<b>预检请求</b>——带了自定义头（如 Authorization）、用了 PUT/DELETE、或 Content-Type 是 application/json，浏览器就先发一个 OPTIONS「探路」，服务器答对（ACAO + Allow-Methods + Allow-Headers）才放行正式请求。</p>
+    <p>再叠加 Cookie 的特殊条款：跨域带凭据时，<code>Access-Control-Allow-Credentials: true</code> 必须在，而且 ACAO <em>不能是通配符 *</em>，必须写明确域名——这是安全设计：不能让任何网站都带着你的 Cookie 去问别的站。</p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 10 · CORS 预检台</span><span class="demo-title">搭一个请求，看门卫放不放行<span class="hint">四个开关 → 判定</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="chip" id="cors-origin" aria-pressed="false">跨域请求</span>
+            <span class="chip" id="cors-header" aria-pressed="false">自定义头</span>
+            <span class="chip" id="cors-method" aria-pressed="false">PUT/DELETE</span>
+            <span class="chip" id="cors-cred" aria-pressed="false">带 Cookie</span>
+            <button class="btn" id="cors-go">发请求</button>
+          </div>
+        </div>
+        <div class="logbox" id="cors-log" style="min-height:120px"></div>
+        <div class="readout">
+          <div class="rd">预检 OPTIONS<b class="hot" id="cors-pre">—</b></div>
+          <div class="rd">服务器须返回<b id="cors-need">—</b></div>
+          <div class="rd">判定<b id="cors-verdict">—</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">判定规则：同源永远放行；跨域 + 简单请求 → 直接发，需 ACAO；跨域 + 非简单请求 → 先发 OPTIONS 预检，需 ACAO + Allow-Methods + Allow-Headers；带 Cookie 还需 ACAC:true 且 ACAO 不能为 *。</div>
+    </div>
+    <div class="note-box"><b>实用技巧：</b>开发环境用 Vite 的 <code>server.proxy</code> 把 API 代理到同域——CORS 问题直接消失，因为浏览器看到的就是同源请求。反过来记住一句话：<b>CORS 是浏览器行为，服务端之间没有 CORS</b>——两台服务器互调接口，谁也不会拦谁。</div>
+  </div>
+</section>
+
+<section class="sect" id="s11">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>10</b>第十章</div>
+      <div><h2>实时通信：轮询、SSE 与 WebSocket 各管一段</h2>
+        <p>聊天室、行情推送、协同编辑——都需要「服务器主动找你」。但实现方式有三种，赛道完全不同。</p>
+      </div>
+    </div>
+    <div class="prose"><p><b>轮询</b>最笨但最兼容：客户端定时发 HTTP 问「有新消息吗」，多数时候空手而归——延迟取决于间隔，浪费取决于频率。<b>SSE（Server-Sent Events）</b>是单向推送：一条长连接只往下发，客户端不能回话——天生适合通知、行情、日志流，而且它就是普通 HTTP，断线自动重连、代理友好。<b>WebSocket</b>是全双工：先发一个带 <code>Upgrade: websocket</code> 的 HTTP 请求「借道升级」，之后这条 TCP 连接双向随时发——适合聊天、协同编辑、游戏。</p>
+    <p>三者延迟与开销的差距是数量级的：轮询每 tick 都有完整的请求头开销（约 800B 起），SSE 和 WebSocket 只在建立时付一次握手税。但代价结构也不同——轮询烧的是「每次都问」，SSE 烧的是「一条连接一直挂着」，WebSocket 烧的是「服务端要维护全双工状态」。选型先问一句话：<em>客户端需要往回说话吗？</em>不需要，SSE 就够了。</p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 11 · 实时通信对比台</span><span class="demo-title">同一条消息，三种送达方式<span class="hint">切模式 · 发消息 · 看延迟</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="chip" data-mode="poll" aria-pressed="true">轮询</span>
+            <span class="chip" data-mode="sse" aria-pressed="false">SSE</span>
+            <span class="chip" data-mode="ws" aria-pressed="false">WebSocket</span>
+            <button class="btn" id="rt-send">服务器产生一条消息</button>
+            <button class="btn ghost" id="rt-clear">清空</button>
+          </div>
+        </div>
+        <div class="logbox" id="rt-log" style="min-height:170px"></div>
+        <div class="readout">
+          <div class="rd">当前模式<b class="hot" id="rt-mode">轮询</b></div>
+          <div class="rd">请求/连接数<b id="rt-conn">0</b></div>
+          <div class="rd">送达延迟<b id="rt-lat">—</b></div>
+          <div class="rd">累计开销<b id="rt-cost">0 B</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">确定性模拟：轮询每 3 秒发一次 HTTP（没消息也算一次开销，消息要等下一次轮询才送达）；SSE 保持一条长连接，服务器有消息立即推（~40ms）；WebSocket 全双工即时（~40ms）。切到轮询模式再点几次按钮，感受「消息在门口排队等下一班车」。</div>
+    </div>
+    <div class="note-box"><b>选型口诀：</b>只往下推 → SSE（一行代码能跑，EventSource 自带重连）；要双向 → WebSocket；不在乎延迟和电量 → 轮询（移动端别用，烧电）。别拿 WebSocket 发一次性请求——那是为了寄一张明信片铺了一条专用电话线。</div>
+  </div>
+</section>
+
+<section class="sect" id="s12">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>11</b>第十一章</div>
+      <div><h2>CDN：缓存的金字塔</h2>
+        <p>你和另一个城市的用户打开同一个页面，字节可能来自完全不同的服务器——CDN 的本质是「把内容搬到离用户最近的地方」。</p>
+      </div>
+    </div>
+    <div class="prose"><p>缓存的层级像金字塔：<b>浏览器缓存</b>（最快，0ms）→ <b>CDN 边缘节点</b>（最近的机房，十几 ms）→ <b>源站</b>（最慢但唯一真相）。每次请求自顶向下找，上层有就用上层——但每一层的缓存策略可以独立设置，这正是 CDN 配置的核心难题：<em>边缘节点缓存多久？源站更新之后，边缘怎么知道？</em></p>
+    <p>CDN 的默认行为是「尊重源站的缓存头」：源站说 <code>Cache-Control: max-age=600</code>，边缘节点就替全世界缓存十分钟。问题是源站<b>主动更新内容时，不会通知任何一层缓存</b>——旧副本会一直活到 TTL 自然到期。所以才有「CDN 主动刷新 / purge」这个操作：手动告诉边缘节点「这份资源作废，重新回源」。发布系统的「发布后自动 purge」就是干这个的。</p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 12 · CDN 缓存金字塔</span><span class="demo-title">点「用户访问」，看哪一层命中<span class="hint">每次访问时钟 +60s · 三层独立过期</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn" id="cdn-visit">用户访问</button>
+            <button class="btn ghost" id="cdn-edit">源站更新内容</button>
+            <button class="btn ghost" id="cdn-purge">CDN 主动刷新</button>
+            <button class="btn ghost" id="cdn-reset">重置</button>
+          </div>
+        </div>
+        <div class="stage" style="background:var(--paper);border:1.5px solid var(--line-strong);border-radius:10px;padding:6px"><svg id="cdn-svg" viewBox="0 0 880 250" role="img" aria-label="CDN 缓存层级：浏览器、CDN 边缘、源站三层查找"></svg></div>
+        <div class="logbox" id="cdn-log" style="min-height:64px;margin-bottom:10px"></div>
+        <div class="readout">
+          <div class="rd">本次命中<b class="hot" id="cdn-hit">—</b></div>
+          <div class="rd">延迟<b id="cdn-lat">—</b></div>
+          <div class="rd">累计回源<b id="cdn-origin">0 次</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">确定性模拟：浏览器 TTL 300s、CDN TTL 600s，每次「用户访问」时钟走 60 秒。「源站更新」只改源站版本号，两层缓存继续发旧版（命中处标红「旧版！」）——这正是「发布后用户看不到新版」的完整机理，唯一的解法是 TTL 到期或主动刷新。</div>
+    </div>
+    <div class="note-box"><b>排查顺序：</b>发布后看不到新版？①Ctrl+Shift+R 强刷（绕过浏览器缓存）→ ②URL 加个查询参数绕过 CDN → ③查源站本身。反向思考配缓存头：<em>这个资源的过期容忍度是几秒？</em>新闻首页 30s，带 hash 的静态文件一年（immutable）。</div>
+  </div>
+</section>
+
+<section class="sect" id="s13">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>12</b>第十二章</div>
+      <div><h2>QUIC：换个 Wi-Fi 不断线</h2>
+        <p>咖啡馆里用 Wi-Fi 开着视频通话，走到门口 Wi-Fi 断了切到 4G——IP 变了，TCP 连接必死。QUIC（HTTP/3 的底座）用一枚「连接 ID」解决了它。</p>
+      </div>
+    </div>
+    <div class="prose"><p>TCP 的连接由「四元组」定义：源 IP、源端口、目的 IP、目的端口——IP 一变，四元组全变，对端再也认不出你，连接只能重建。QUIC 的连接由一个 <b>64 位 Connection ID</b> 定义，与 IP 无关：换了网络，Connection ID 不变，连接就活着。<em>这就是「连接迁移」。</em>对移动设备来说这不是优化，是刚需——手机一天换十次网络。</p>
+    <p>QUIC 在 UDP 之上自己重造了可靠传输：序列号、重传、流控一样不少，但流与流之间<b>真正独立</b>——一个流丢包，其他流照跑，把 TCP 层的队头阻塞彻底埋掉。加上 <b>0-RTT 重连</b>（加密参数缓存在本地，第一个包就带数据）和内建 TLS 1.3（握手与传输合并），HTTP/3 的快不只是「快一点」，而是把建连成本压到接近零。<em>代价是中间设备看不到端口号语义了</em>——UDP 443 上的流量对防火墙是个黑盒，这也是 HTTP/3 普及比想象中慢的原因之一。</p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 13 · 连接迁移台</span><span class="demo-title">TCP 断了，QUIC 活着<span class="hint">切换网络看两条连接的命运</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="chip" id="q-net-chip" aria-pressed="false">切换到 4G</span>
+            <button class="btn" id="q-go">切换网络</button>
+            <button class="btn ghost" id="q-reset">重置</button>
+          </div>
+        </div>
+        <div class="logbox" id="q-log" style="min-height:120px"></div>
+        <div class="readout">
+          <div class="rd">当前网络<b class="hot" id="q-net">Wi-Fi · 192.168.1.7</b></div>
+          <div class="rd">TCP 连接<b id="q-tcp">活跃</b></div>
+          <div class="rd">QUIC 连接<b id="q-quic">活跃</b></div>
+          <div class="rd">视频通话<b id="q-video">流畅</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">TCP：四元组失效 → 连接死亡 → 重新握手（至少 1-RTT）→ 通话卡顿数秒。QUIC：Connection ID 不变 → 无缝迁移 → 通话不断。切回去也一样：4G → Wi-Fi，四元组又变了，TCP 再死一次。</div>
+    </div>
+    <div class="note-box"><b>一句话总结三代协议：</b>HTTP/1.1 一条连接一次事；HTTP/2 一条连接多路复用但 TCP 层仍会队头阻塞；HTTP/3（QUIC）连接跟着设备走、流间真正独立、握手零往返。你的浏览器今天访问的大站多半已经在用 HTTP/3 了——只是你感觉不到，这正是好协议的样子。</div>
+  </div>
+</section>
+
+<section class="sect" id="s9">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>13</b>第十三章</div>
+      <div><h2>速查卡：按下回车后的十二件事</h2>
+        <p>如果只带走十二句——</p>
       </div>
     </div>
     <div class="prose">
@@ -503,6 +644,10 @@ p{margin:0 0 1.15em}
         <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑥ 延迟大头是物理</b><p style="margin:6px 0 0;font-size:13.5px">光速 × 光纤折射率 ≈ 200km/ms——跨洋 100ms+ 是物理定律，代码优化省不出来。</p></div>
         <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑦ cwnd 是驯出来的，不是设出来的</b><p style="margin:6px 0 0;font-size:13.5px">慢启动翻倍、AIMD 线性爬、丢包就减半——互联网的秩序全靠每张网卡自觉执行同一套算法。</p></div>
         <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑧ 缓存是最大的性能杠杆</b><p style="margin:6px 0 0;font-size:13.5px">304 的价值不是「快」，是「根本没下载」——正确配置 max-age + ETag 的收益超过任何代码优化。</p></div>
+        <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑨ CORS 拦的是浏览器，不是请求</b><p style="margin:6px 0 0;font-size:13.5px">请求发出去了，服务器也回了 200——浏览器只是不把结果交给你的 JS。服务端之间没有 CORS。</p></div>
+        <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑩ 单向推送用 SSE，双向才上 WebSocket</b><p style="margin:6px 0 0;font-size:13.5px">SSE 一行代码能跑、自带重连；WebSocket 要专门的升级握手——杀鸡别用牛刀。</p></div>
+        <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑪ 发布后看不到新版？按序查三层缓存</b><p style="margin:6px 0 0;font-size:13.5px">浏览器 → CDN → 源站，每层独立过期。强刷 → purge → 查源站，一层层剥。</p></div>
+        <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑫ QUIC 让连接跟着设备走</b><p style="margin:6px 0 0;font-size:13.5px">Connection ID 与 IP 无关——Wi-Fi 切 4G 不断线。HTTP/3 不只是更快，是更稳。</p></div>
       </div>
       <p style="margin-top:18px;font-family:var(--mono);font-size:11px;color:var(--faint)">按下回车，四百毫秒，一场横跨半个地球的接力。——网络手册 · 完</p>
     </div>
@@ -1406,6 +1551,251 @@ const srand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return se
   bindChip("#wf-slowjs", "slow");
   $("#wf-reset").addEventListener("click", () => { S.proto = "h2"; S.cache = false; S.slow = false; $("#wf-proto").setAttribute("aria-pressed", "false"); $("#wf-proto").textContent = "HTTP/2"; $("#wf-cache").textContent = "首次访问（无缓存）"; $("#wf-cache").setAttribute("aria-pressed", "false"); $("#wf-slowjs").textContent = "JS1 慢 3×"; $("#wf-slowjs").setAttribute("aria-pressed", "false"); render(); });
   render();
+
+/* ═══ 互动 10 · CORS 预检台 ═══ */
+(() => {
+  const S = { cross: false, header: false, method: false, cred: false };
+  const CHIPS = [["#cors-origin", "cross", "跨域请求", "同源请求"], ["#cors-header", "header", "自定义头", "自定义头"], ["#cors-method", "method", "PUT/DELETE", "PUT/DELETE"], ["#cors-cred", "cred", "带 Cookie", "带 Cookie"]];
+  CHIPS.forEach(([id, key, onTxt, offTxt]) => {
+    $(id).addEventListener("click", () => {
+      S[key] = !S[key];
+      $(id).setAttribute("aria-pressed", String(S[key]));
+      $(id).textContent = S[key] ? onTxt : offTxt;
+      $(id).style.background = S[key] ? "var(--red)" : "";
+      $(id).style.color = S[key] ? "var(--paper)" : "";
+      $("#cors-go").textContent = "发请求";
+    });
+  });
+  const put = (box, html) => { $(box).insertAdjacentHTML("beforeend", html + "\n"); };
+  $("#cors-go").addEventListener("click", () => {
+    const lg = $("#cors-log");
+    lg.innerHTML = "";
+    const pre = $("#cors-pre"), need = $("#cors-need"), verdict = $("#cors-verdict");
+    if (!S.cross) {
+      put("#cors-log", "<b>① 同源请求</b>：协议、域名、端口全一致");
+      put("#cors-log", "② 浏览器直接放行——同源是默认权利，无需任何协商");
+      put("#cors-log", "<span style='color:var(--faint)'>（CORS 规则只在跨域时启动，同源请求连门卫的面都见不到）</span>");
+      pre.textContent = "无需"; need.textContent = "无"; verdict.textContent = "直接放行";
+      verdict.className = "okc"; return;
+    }
+    const complex = S.header || S.method;
+    if (complex) {
+      put("#cors-log", "<b>① 非简单请求</b>（自定义头 / PUT·DELETE / JSON Content-Type）");
+      put("#cors-log", "② 浏览器先发 <b>OPTIONS 预检</b>，附 Access-Control-Request-Method 与 -Headers");
+      put("#cors-log", "③ 服务器须回答：ACAO + Access-Control-Allow-Methods + Access-Control-Allow-Headers");
+      put("#cors-log", "④ 预检通过 → 浏览器才发正式请求（预检结果可缓存几分钟）");
+      pre.textContent = "会发（1 次额外往返）";
+      need.textContent = S.cred ? "ACAO + ACAM + ACAH + ACAC" : "ACAO + ACAM + ACAH";
+    } else {
+      put("#cors-log", "<b>① 简单请求</b>（GET/POST + 常见 Content-Type，无自定义头）");
+      put("#cors-log", "② 直接发出正式请求——不预检");
+      put("#cors-log", "③ 服务器响应 200，但浏览器检查响应头里有没有 ACAO");
+      put("#cors-log", "<span style='color:var(--faint)'>若缺 ACAO：请求其实成功了，服务器都不知道被拦——只有你的 JS 收到 TypeError</span>");
+      pre.textContent = "不发"; need.textContent = S.cred ? "ACAO（明确域名）+ ACAC" : "Access-Control-Allow-Origin";
+    }
+    if (S.cred) {
+      put("#cors-log", "<b>⑤ 带凭据附加条款</b>：ACAC:true 必须在，且 ACAO 不能是 *，必须写明确域名");
+    }
+    pre.textContent = S.cred && !complex ? pre.textContent : pre.textContent;
+    verdict.textContent = "服务器答对 → 放行；缺头 → 拦截";
+    verdict.className = "hot";
+  });
+})();
+
+/* ═══ 互动 11 · 实时通信对比台 ═══ */
+(() => {
+  let mode = "poll", timer = null, pending = null, tickN = 0;
+  let connN = 0, costB = 0, lastLat = null;
+  const NAMES = { poll: "轮询", sse: "SSE", ws: "WebSocket" };
+  const put = (h) => { $("#rt-log").insertAdjacentHTML("beforeend", h + "\n"); };
+  const stats = () => {
+    $("#rt-conn").textContent = connN + (mode === "poll" ? " 次请求" : " 条长连接");
+    $("#rt-lat").textContent = lastLat === null ? "—" : lastLat + " ms";
+    $("#rt-cost").textContent = costB >= 1024 ? (costB / 1024).toFixed(1) + " KB" : costB + " B";
+  };
+  const deliver = (via) => {
+    if (pending === null) return false;
+    lastLat = mode === "poll" ? 800 + ((tickN * 137) % 2100) : 40;
+    const t = pending; pending = null;
+    const sec = ((Date.now() - t) / 1000).toFixed(1);
+    put("<b style='color:var(--green,#3f8f5f)'>→ 消息送达</b>（经" + via + "，排队 " + sec + "s 后送达，延迟 " + lastLat + "ms）");
+    return true;
+  };
+  const stopTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
+  const setMode = (m) => {
+    mode = m; stopTimer(); tickN = 0; connN = 0; costB = 0; lastLat = null;
+    $("#rt-mode").textContent = NAMES[m];
+    document.querySelectorAll("[data-mode]").forEach((c) => {
+      const on = c.getAttribute("data-mode") === m;
+      c.setAttribute("aria-pressed", String(on));
+      c.style.background = on ? "var(--ink)" : "";
+      c.style.color = on ? "var(--paper)" : "";
+    });
+    if (m === "poll") {
+      put("<b>轮询模式</b>：每 3 秒发一次 GET /messages——不管有没有新消息");
+      timer = setInterval(() => {
+        tickN++; connN++; costB += 800;
+        if (!deliver("轮询响应")) put("轮询 #" + tickN + "：GET /messages → <span style='color:var(--faint)'>空，白白花了 800B</span>");
+        stats();
+      }, 3000);
+    } else if (m === "sse") {
+      put("<b>SSE 模式</b>：EventSource 建立一条长连接，只等服务器往下推");
+      connN = 1; costB = 800;
+      put("<span style='color:var(--faint)'>连接挂起……零流量静默等待（这就是长连接省钱的原理）</span>");
+    } else {
+      put("<b>WebSocket 模式</b>：Upgrade 握手后，一条 TCP 双向随时发");
+      connN = 1; costB = 800;
+      put("<span style='color:var(--faint)'>客户端也能主动发——这是它和 SSE 的分水岭</span>");
+    }
+    stats();
+  };
+  document.querySelectorAll("[data-mode]").forEach((c) => c.addEventListener("click", () => setMode(c.getAttribute("data-mode"))));
+  $("#rt-send").addEventListener("click", () => {
+    if (pending !== null) { put("（服务器又产生一条，上一条还没送达）"); return; }
+    pending = Date.now();
+    put("<b>服务器产生消息</b> @ t=0");
+    if (mode === "sse" || mode === "ws") {
+      setTimeout(() => { deliver(mode === "sse" ? "SSE 推送" : "WS 双向"); stats(); }, 40);
+    } else {
+      put("<span style='color:var(--faint)'>轮询模式：消息在门口排队，等下一次 3 秒班车……</span>");
+    }
+  });
+  $("#rt-clear").addEventListener("click", () => { $("#rt-log").innerHTML = ""; setMode(mode); });
+  setMode("poll");
+})();
+
+/* ═══ 互动 12 · CDN 缓存金字塔 ═══ */
+(() => {
+  const svg = $("#cdn-svg");
+  if (!svg) return;
+  const S = { clock: 0, originVer: 1, bVer: null, bExp: 0, cVer: null, cExp: 0, originN: 0, visitN: 0, hit: -1, stale: false };
+  const put = (h) => { $("#cdn-log").insertAdjacentHTML("beforeend", h + "\n"); };
+  const layer = (y, h, name) => {
+    const g = el("g", {}, svg);
+    el("rect", { x: 120, y: y, width: 620, height: h, rx: 10, fill: "var(--card)", stroke: "var(--line-strong)", "stroke-width": 1.5 }, g);
+    el("text", { x: 140, y: y + 21, "font-size": 13, "font-weight": 700, fill: "var(--ink)" }, g).textContent = name;
+    return g;
+  };
+  const badge = (g, y, ok) => {
+    el("circle", { cx: 100, cy: y, r: 9, fill: ok ? "#3f8f5f" : "#b8434f" }, g);
+    el("text", { x: 100, y: y + 4, "text-anchor": "middle", "font-size": 11, fill: "#fff", "font-weight": 700 }, g).textContent = ok ? "✓" : "✗";
+  };
+  const render = () => {
+    svg.innerHTML = "";
+    const rows = [
+      layer(10, 62, "浏览器缓存（0ms）"),
+      layer(92, 62, "CDN 边缘节点（~15ms）"),
+      layer(174, 62, "源站（唯一真相 · ~120ms）"),
+    ];
+    const stat = (ver, exp) => ver === null ? "空" : "v" + ver + " · 剩 " + Math.max(0, exp - S.clock) + "s" + (ver < S.originVer ? "（旧版！）" : "");
+    const colOf = (ver, exp, hit) => {
+      if (hit === true) return ver < S.originVer ? "#b8434f" : "#3f8f5f";
+      if (hit === false) return "var(--faint)";
+      return "var(--ink)";
+    };
+    const texts = [
+      { t: stat(S.bVer, S.bExp), hit: S.hit === 0 ? true : S.hit > 0 ? false : null },
+      { t: stat(S.cVer, S.cExp), hit: S.hit === 1 ? true : S.hit === 2 ? false : null },
+      { t: "v" + S.originVer + "（当前内容）", hit: S.hit === 2 ? true : null },
+    ];
+    rows.forEach((g, i) => {
+      const x = texts[i];
+      el("text", { x: 720, y: i === 2 ? 210 : i === 1 ? 128 : 46, "font-size": 12, "font-family": "var(--mono)", fill: colOf(null, null, x.hit), "text-anchor": "end", "font-weight": x.hit === true ? 700 : 400 }, g).textContent = x.t;
+      if (x.hit === true) badge(g, i === 2 ? 205 : i === 1 ? 123 : 41, true);
+      if (x.hit === false) badge(g, i === 1 ? 123 : 41, false);
+    });
+    if (S.hit > 0) {
+      el("line", { x1: 60, y1: 41, x2: 60, y2: S.hit === 2 ? 205 : 123, stroke: "var(--faint)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, svg);
+      el("text", { x: 40, y: 130, "font-size": 10, fill: "var(--faint)", transform: "rotate(-90 40 130)", "text-anchor": "middle" }, svg).textContent = "MISS ↓ 继续向下找";
+    }
+    if (S.stale) {
+      el("text", { x: 440, y: 245, "font-size": 11, "font-weight": 700, fill: "#b8434f", "text-anchor": "middle" }, svg).textContent = "⚠ 命中了缓存，但那是旧版内容——这就是「发布后看不到新版」";
+    }
+  };
+  const visit = () => {
+    S.visitN++; S.clock += 60; S.hit = -1; S.stale = false;
+    let lat = 0, where = "", served = null;
+    if (S.bVer !== null && S.clock < S.bExp) {
+      S.hit = 0; served = S.bVer; where = "浏览器缓存"; lat = 0;
+    } else if (S.cVer !== null && S.clock < S.cExp) {
+      S.hit = 1; served = S.cVer; where = "CDN 边缘"; lat = 15;
+      S.bVer = S.cVer; S.bExp = S.clock + 300;
+    } else {
+      S.hit = 2; served = S.originVer; where = "源站"; lat = 120;
+      S.originN++;
+      S.cVer = S.originVer; S.cExp = S.clock + 600;
+      S.bVer = S.originVer; S.bExp = S.clock + 300;
+    }
+    S.stale = served < S.originVer;
+    put("第 " + S.visitN + " 次访问（t=" + S.clock + "s）：命中 <b>" + where + "</b> · " + lat + "ms · 拿到 v" + served + (S.stale ? " <b style='color:#b8434f'>← 旧版！源站已是 v" + S.originVer + "</b>" : "（最新）"));
+    $("#cdn-hit").textContent = where + " · v" + served + (S.stale ? "（旧）" : "");
+    $("#cdn-lat").textContent = lat + " ms";
+    $("#cdn-origin").textContent = S.originN + " 次";
+    render();
+  };
+  $("#cdn-visit").addEventListener("click", visit);
+  $("#cdn-edit").addEventListener("click", () => {
+    S.originVer++;
+    put("<b style='color:#b8434f'>源站更新为 v" + S.originVer + "</b> —— 没有通知任何一层缓存，两层继续发 v" + (S.originVer - 1));
+    render();
+  });
+  $("#cdn-purge").addEventListener("click", () => {
+    S.cVer = null;
+    put("<b>CDN 主动刷新（purge）</b>：边缘节点作废，下次访问回源拿 v" + S.originVer + "（浏览器缓存仍要等它自己过期或强刷）");
+    render();
+  });
+  $("#cdn-reset").addEventListener("click", () => {
+    S.clock = 0; S.originVer = 1; S.bVer = null; S.bExp = 0; S.cVer = null; S.cExp = 0; S.originN = 0; S.visitN = 0; S.hit = -1; S.stale = false;
+    $("#cdn-log").innerHTML = "";
+    $("#cdn-hit").textContent = "—"; $("#cdn-lat").textContent = "—"; $("#cdn-origin").textContent = "0 次";
+    put("冷启动：三层全空。点「用户访问」——第一击必然打穿到源站。");
+    render();
+  });
+  $("#cdn-reset").click();
+})();
+
+/* ═══ 互动 13 · QUIC 连接迁移台 ═══ */
+(() => {
+  let net = "wifi", busy = false, timers = [];
+  const later = (ms, fn) => timers.push(setTimeout(fn, ms));
+  const put = (h) => { $("#q-log").insertAdjacentHTML("beforeend", h + "\n"); };
+  const NAME = { wifi: "Wi-Fi · 192.168.1.7", cellular: "4G · 10.32.8.44" };
+  const setRead = (tcp, quic, cost) => {
+    $("#q-tcp").textContent = tcp; $("#q-quic").textContent = quic; $("#q-video") && ($("#q-video").textContent = "TCP 通话卡 " + cost + "s · QUIC 流畅");
+    $("#q-tcp").className = tcp === "活跃" ? "okc" : "hot";
+  };
+  $("#q-go").addEventListener("click", () => {
+    if (busy) return; busy = true;
+    timers.forEach(clearTimeout); timers = [];
+    const from = net; net = net === "wifi" ? "cellular" : "wifi";
+    $("#q-net").textContent = NAME[net];
+    $("#q-net-chip").textContent = net === "wifi" ? "切换到 4G" : "切换到 Wi-Fi";
+    put("<b>网络切换：" + (from === "wifi" ? "Wi-Fi → 4G" : "4G → Wi-Fi") + "</b>，本机 IP 变为 " + NAME[net].split(" · ")[1]);
+    later(300, () => {
+      put("<b style='color:#b8434f'>TCP：四元组 (源IP·源端口·目的IP·目的端口) 失效 → 连接死亡</b>");
+      setRead("已断开", "活跃", "…");
+    });
+    later(900, () => put("TCP：重新三次握手 + TLS…（至少 1-RTT，公网几百 ms）"));
+    later(1500, () => {
+      put("<b>TCP 承载的视频通话：卡顿约 2.4 秒后恢复</b>");
+      setRead("已重建", "活跃", "2.4");
+    });
+    later(300, () => put("<b>QUIC：连接 ID 0x7f3a…c1 不变——它和 IP 无关</b>"));
+    later(900, () => put("QUIC：新路径上发 PATH_CHALLENGE 验证 → 通过"));
+    later(1500, () => {
+      put("<b style='color:#3f8f5f'>QUIC 连接无缝迁移完成，视频通话一个字都没丢</b>");
+      $("#q-quic").textContent = "无缝迁移 ✓";
+    });
+    later(2100, () => { busy = false; put("<span style='color:var(--faint)'>再切一次也一样——回 Wi-Fi 时四元组又变了，TCP 再死一回。</span>"); });
+  });
+  $("#q-reset").addEventListener("click", () => {
+    timers.forEach(clearTimeout); timers = []; busy = false;
+    net = "wifi"; $("#q-net").textContent = NAME.wifi; $("#q-net-chip").textContent = "切换到 4G";
+    $("#q-log").innerHTML = ""; setRead("活跃", "活跃", "0"); $("#q-quic").textContent = "活跃";
+    put("视频通话进行中（TCP 与 QUIC 各一条）。出门——Wi-Fi 信号没了，切到 4G。");
+  });
+  $("#q-reset").click();
+})();
 })();
 })();
 </script>
