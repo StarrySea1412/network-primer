@@ -73,7 +73,7 @@ p{margin:0 0 1.15em}
 .demo-foot{border-top:1px solid var(--line);padding:8px 16px;font-family:var(--mono);font-size:10px;color:var(--faint);line-height:1.7}
 .demo-foot b{color:#31536b}
 .stage{border:1.5px solid var(--line);border-radius:8px;background:#171614;overflow:hidden}
-.stage svg{display:block;width:100%}
+.stage svg,.stage canvas{display:block;width:100%}
 .controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:13px 2px 0}
 .ctl{min-width:150px;flex:1}
 .ctl label{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
@@ -109,11 +109,11 @@ p{margin:0 0 1.15em}
   <div>
     <p class="eyebrow"><b>INTERACTIVE</b>网络册 · 手册系列第三部</p>
     <h1>你按下回车<br/><em>之后</em>发生的事</h1>
-    <p class="dek">你输入网址、按下回车——四百毫秒后，页面出现在眼前。这四百毫秒里，一个请求被翻译成地址、握了三次手、套了四层信封、被十几台路由器接力。这篇把每一站拆开给你玩：五段确定性模拟，每一跳都能亲手发车。</p>
+    <p class="dek">你输入网址、按下回车——四百毫秒后，页面出现在眼前。这四百毫秒里，一个请求被翻译成地址、握了三次手、套了四层信封、被十几台路由器接力，还要经历拥塞窗口的锯齿与 TLS 的密钥交换。这篇把每一站拆开给你玩：<b>八段确定性模拟，全部跑真实算法</b>——慢启动、AIMD、HSL 没有假数据，ETag 协商是真的状态机。</p>
     <div class="hero-meta">
-      <span class="pill"><b>5</b> 段互动</span>
-      <span class="pill">DNS → TCP → 封装 → HTTP → 路由</span>
-      <span class="pill">零依赖 · 单文件 · 全程确定性模拟</span>
+      <span class="pill"><b>8</b> 段互动</span>
+      <span class="pill">DNS → 握手 → 拥塞 → 封装 → HTTP 缓存 → TLS → HTTP/2 → 路由</span>
+      <span class="pill">零依赖 · 确定性模拟 · 真实算法</span>
     </div>
   </div>
   <figure class="screen" style="margin:0">
@@ -191,6 +191,42 @@ p{margin:0 0 1.15em}
   <div class="wrap">
     <div class="sect-head">
       <div class="sect-num"><b>03</b>第三章</div>
+      <div><h2>滑动窗口与拥塞控制：TCP 的发动机</h2>
+        <p>握手只是开机。真正决定「多快传完」的是两台发动机：<b>滑动窗口</b>决定一次发多少，<b>拥塞控制</b>决定窗口开多大——慢启动、AIMD、快恢复，全是真实算法。</p>
+      </div>
+    </div>
+    <div class="prose"><p>两条铁律：①接收方有缓冲上限（流量控制，rwnd）；②网络有承载上限（拥塞控制，cwnd）。发送方每过一个 RTT 才能学到一次「网络受不受得了」——慢启动阶段每 RTT 窗口翻倍，撞上丢包后减半，再线性爬升。<b>那条锯齿线，就是互联网上每一笔流量真实走过的形状。</b></p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 03 · 拥塞控制台</span><span class="demo-title">看 cwnd 的锯齿怎么长出来<span class="hint">真实慢启动/AIMD/快恢复</span></span></div>
+      <div class="demo-body">
+        <div class="stage" style="padding:0"><canvas id="cc-graph" width="880" height="240"></canvas></div>
+        <div class="stage" style="margin-top:8px;padding:0"><canvas id="sw-strip" width="880" height="96"></canvas></div>
+        <div class="controls">
+          <div class="ctl"><label>初始 ssthresh<b id="cc-ssth">8</b></label><input type="range" id="cc-ss" min="2" max="30" value="8"/></div>
+          <div class="ctl"><label>RTT<b id="cc-rttv">200 ms</b></label><input type="range" id="cc-rtt" min="40" max="600" value="200" step="20"/></div>
+          <div class="ctl-btn" style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" id="cc-run">启动传输</button>
+            <button class="btn ghost" id="cc-drop-timeout">注入超时丢包</button>
+            <button class="btn ghost" id="cc-drop-3dup">注入 3 个重复 ACK</button>
+            <button class="btn ghost" id="cc-reset2">重置</button>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="rd">阶段<b class="hot" id="cc-phase">未启动</b></div>
+          <div class="rd">cwnd<b id="cc-cwnd">—</b></div>
+          <div class="rd">ssthresh<b id="cc-ssthresh">—</b></div>
+          <div class="rd">已确认<b id="cc-acked">—</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">按 RFC 5681 实现：慢启动每 RTT 翻倍 → 达到 ssthresh 转 AIMD（每 RTT +1）→ <b>超时</b>：ssthresh = cwnd/2，cwnd 回 1 重走慢启动；<b>3 个重复 ACK</b>：快恢复（ssthresh = cwnd/2，cwnd = ssthresh + 3，线性续传）。下条为序号空间上的窗口滑动实况。</div>
+    </div>
+  </div>
+</section>
+
+<section class="sect" id="s4">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>04</b>第四章</div>
       <div><h2>封装：洋葱式的四层信封</h2>
         <p>你的「你好」发出去之前被套了四层信封：HTTP 套进 TCP、TCP 套进 IP、IP 套进以太网帧——每层只管拆自己那层。</p>
       </div>
@@ -219,43 +255,103 @@ p{margin:0 0 1.15em}
   </div>
 </section>
 
-<section class="sect" id="s4">
+<section class="sect" id="s6">
   <div class="wrap">
     <div class="sect-head">
-      <div class="sect-num"><b>04</b>第四章</div>
-      <div><h2>HTTP：一场你来我往的对话</h2>
+      <div class="sect-num"><b>06</b>第六章</div>
+      <div><h2>TLS：握手之后，世界只剩密文</h2>
+        <p>HTTPS = HTTP over TLS。TLS 握手是「在不安全信道上商量出一把只有双方知道的钥匙」——而这一步<b>本身必须是明文的</b>，所以每一帧谁可见、谁不可见，都有明确边界。</p>
+      </div>
+    </div>
+    <div class="prose"><p>逐步走一遍 TLS 1.3 握手，右边同步显示「窃听者视角」：他能看到域名（SNI 明文）、证书链、握手时长——但看不到路径、Cookie、正文。<b>一个常被忽视的细节：</b>SNI（服务器名称指示）在 ClientHello 里是明文的，这正是 ECH（Encrypted Client Hello）要修的最后一个明文缺口。</p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 06 · TLS 握手解剖</span><span class="demo-title">明文与密文的边界<span class="hint">逐步 + 窃听者视图</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div class="ctl-btn" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn" id="tls-step">下一步</button>
+            <button class="btn ghost" id="tls-reset">重置</button>
+            <span class="switch"><input type="checkbox" id="tls-spy"/><span>窃听者视角</span></span>
+          </div>
+        </div>
+        <div class="logbox" id="tls-log" style="min-height:210px"></div>
+        <div class="readout" style="margin-top:10px">
+          <div class="rd">握手进度<b class="hot" id="tls-prog">0 / 6</b></div>
+          <div class="rd">密钥状态<b id="tls-key">未协商</b></div>
+          <div class="rd">窃听者知道<b id="tls-spyknow">—</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">TLS 1.3 只需 1-RTT：ClientHello 里直接带上密钥交换参数，比 1.2 少一个来回。切「窃听者视角」：SNI 和证书是明文（他能知道你在访问哪家网站），但 URL 路径、Cookie、正文全是密文。</div>
+    </div>
+  </div>
+</section>
+
+<section class="sect" id="s7">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>07</b>第七章</div>
+      <div><h2>HTTP/2：一条马路，多车道复用</h2>
+        <p>HTTP/1.1 一个连接一次只能跑一个请求——前面慢了，后面全堵着。HTTP/2 把报文切成帧，多个流在一条连接上<b>交错传输</b>。</p>
+      </div>
+    </div>
+    <div class="prose"><p>让 CSS2 慢 3 秒试试：HTTP/1.1 的连接 2 上，排在它后面的 JS 只能干等（<b>队头阻塞</b>）；HTTP/2 里 CSS2 的帧稀疏插入，其他流的帧照常穿行。代价是 TCP 层的丢包仍然阻塞所有流——所以 QUIC 干脆把可靠传输也重做了。</p></div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 07 · 多路复用台</span><span class="demo-title">1.1 队头阻塞 vs 2 流交错<span class="hint">让一个资源变慢</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div class="ctl-btn" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn" id="h2-go">传输全部资源</button>
+            <span class="switch"><input type="checkbox" id="h2-slow"/><span>让 CSS2 慢 3 倍</span></span>
+            <button class="btn ghost" id="h2-reset">重置</button>
+          </div>
+        </div>
+        <div class="stage" style="padding:0"><canvas id="h2-cv" width="880" height="300"></canvas></div>
+        <div class="readout">
+          <div class="rd">HTTP/1.1 完成时间<b class="hot" id="h2-t1">—</b></div>
+          <div class="rd">HTTP/2 完成时间<b class="okc" id="h2-t2">—</b></div>
+          <div class="rd">差距来源<b id="h2-why">—</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">上排：HTTP/1.1 六条并发连接，每条内部严格串行；下排：HTTP/2 单连接帧交错（不同流不同色）。慢资源在 1.1 里堵死整条连接，在 2 里只是稀疏插帧——这就是多路复用。</div>
+    </div>
+  </div>
+</section><section class="sect" id="s5">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>05</b>第五章</div>
+      <div><h2>HTTP：请求、应答与缓存协商</h2>
         <p>连接建好，浏览器发请求，服务器给应答。请求行、状态行、头部、正文——每个字段都在说话。</p>
       </div>
     </div>
     <div class="prose"><p>选一个状态码，看服务器怎么答、浏览器接着做什么。<b>301 和 404 的区别</b>不只是数字：301 会触发浏览器再发一次请求（去新地址），404 只是展示错误页——重定向是有成本的，每 301 一次就是一次额外的完整往返。</p></div>
     <div class="demo">
-      <div class="demo-head"><span class="demo-tag">互动 04 · HTTP 往返台</span><span class="demo-title">换状态码，看连锁反应<span class="hint">GET /index.html</span></span></div>
+      <div class="demo-head"><span class="demo-tag">互动 05 · 缓存协商台</span><span class="demo-title">ETag / 304 / max-age 真状态机<span class="hint">发请求 · 快进 · 改资源</span></span></div>
       <div class="demo-body">
         <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
-          <div class="ctl-btn" style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip" data-sc="200" aria-pressed="true">200 OK</span>
-            <span class="chip" data-sc="301">301 跳转</span>
-            <span class="chip" data-sc="404">404 未找到</span>
-            <span class="chip" data-sc="500">500 服务器错误</span>
-            <span class="chip" data-sc="304">304 未变化</span>
+          <div class="ctl-btn" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn" id="ca-go">发一次请求</button>
+            <button class="btn ghost" id="ca-tick">快进 70s</button>
+            <button class="btn ghost" id="ca-edit">服务器改资源</button>
+            <span class="chip" id="ca-mode" aria-pressed="false">Cache-Control: no-cache</span>
           </div>
         </div>
-        <div class="logbox" id="http-log" style="min-height:200px"></div>
+        <div class="logbox" id="ca-log" style="min-height:170px"></div>
         <div class="readout" style="margin-top:10px">
-          <div class="rd">浏览器下一步<b class="hot" id="http-next">—</b></div>
-          <div class="rd">额外往返<b id="http-cost">—</b></div>
-          <div class="rd">用户看到<b id="http-see">—</b></div>
+          <div class="rd">网络请求数<b class="hot" id="ca-reqs">0</b></div>
+          <div class="rd">缓存命中节省<b class="okc" id="ca-saved">0 KB</b></div>
+          <div class="rd">缓存状态<b id="ca-state">空</b></div>
         </div>
       </div>
-      <div class="demo-foot">304 是最优雅的应答：正文一个字节都没有，浏览器用本地缓存直接呈现——「Cache-Control / ETag」协商缓存的成果。</div>
+      <div class="demo-foot">真实协商状态机：首次 200 存缓存（带 ETag + max-age 60s）→ 新鲜期内请求根本不出网 → 过期后带 If-None-Match 重验 → 资源没变回 304（省 12.4KB）→ 变了回 200 新正文。切 no-cache 看强制重验。</div>
+    </div>
     </div>
   </div>
 </section>
 
-<section class="sect" id="s5">
+<section class="sect" id="s8">
   <div class="wrap">
     <div class="sect-head">
-      <div class="sect-num"><b>05</b>第五章</div>
+      <div class="sect-num"><b>08</b>第八章</div>
       <div><h2>路由：每一跳都在减一</h2>
         <p>从你家路由器到太平洋对岸的服务器，一个包要经过十几台路由器。每台路由器做同一件事：<b>看一眼目标 IP，查表选下一跳，TTL 减一</b>。</p>
       </div>
@@ -286,12 +382,12 @@ p{margin:0 0 1.15em}
   </div>
 </section>
 
-<section class="sect" id="s6">
+<section class="sect" id="s9">
   <div class="wrap">
     <div class="sect-head">
-      <div class="sect-num"><b>06</b>第六章</div>
-      <div><h2>速查卡：按下回车后的六件事</h2>
-        <p>如果只带走六句——</p>
+      <div class="sect-num"><b>09</b>第九章</div>
+      <div><h2>速查卡：按下回车后的八件事</h2>
+        <p>如果只带走八句——</p>
       </div>
     </div>
     <div class="prose">
@@ -302,6 +398,8 @@ p{margin:0 0 1.15em}
         <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">④ 状态码是行动指令</b><p style="margin:6px 0 0;font-size:13.5px">200 收货、301 再来一次、304 用缓存、404 认错、500 服务器自己扛——每个码都有后续动作。</p></div>
         <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑤ TTL 防永生包</b><p style="margin:6px 0 0;font-size:13.5px">每跳减一、归零即弃。traceroute 用它逼路由器自报家门。</p></div>
         <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑥ 延迟大头是物理</b><p style="margin:6px 0 0;font-size:13.5px">光速 × 光纤折射率 ≈ 200km/ms——跨洋 100ms+ 是物理定律，代码优化省不出来。</p></div>
+        <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑦ cwnd 是驯出来的，不是设出来的</b><p style="margin:6px 0 0;font-size:13.5px">慢启动翻倍、AIMD 线性爬、丢包就减半——互联网的秩序全靠每张网卡自觉执行同一套算法。</p></div>
+        <div style="border:2px solid var(--black);border-radius:10px;background:var(--card);padding:14px 16px;box-shadow:var(--hard)"><b style="color:var(--red)">⑧ 缓存是最大的性能杠杆</b><p style="margin:6px 0 0;font-size:13.5px">304 的价值不是「快」，是「根本没下载」——正确配置 max-age + ETag 的收益超过任何代码优化。</p></div>
       </div>
       <p style="margin-top:18px;font-family:var(--mono);font-size:11px;color:var(--faint)">按下回车，四百毫秒，一场横跨半个地球的接力。——网络手册 · 完</p>
     </div>
@@ -723,6 +821,347 @@ const srand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return se
     draw();
   });
   draw();
+})();
+
+
+/* ═══ 03 滑动窗口 + 拥塞控制台（RFC 5681 真实算法）═══ */
+(() => {
+  const gc = $("#cc-graph");
+  const gs = $("#sw-strip");
+  if (!gc || !gs) return;
+  const g = gc.getContext("2d");
+  const s2 = gs.getContext("2d");
+  const TOTAL = 48;
+  const S = { cwnd: 1, ssthresh: 8, phase: "slowstart", acked: 0, dupAck: 0, rounds: [], history: [], marks: [] };
+  const pkts = Array.from({ length: TOTAL }, (_, i) => ({ n: i + 1, state: "pending" }));  // pending/flight/acked/lost
+  let running = false, timer = null;
+  function phases() { return ["slowstart", "congestion-avoidance", "fast-recovery"]; }
+  function phaseName(p) { return { "slowstart": "慢启动（每 RTT ×2）", "congestion-avoidance": "拥塞避免（每 RTT +1）", "fast-recovery": "快恢复（线性爬升）" }[p] || p; }
+  function drawStrip() {
+    const W = gs.width, H = gs.height;
+    s2.fillStyle = "#171614"; s2.fillRect(0, 0, W, H);
+    const n = TOTAL, w = (W - 40) / n;
+    for (let i = 0; i < n; i++) {
+      const st = pkts[i].state;
+      const x = 20 + i * w + 1;
+      const col = st === "acked" ? "rgba(63,143,95,.85)" : st === "flight" ? "rgba(232,201,106,.9)" : st === "lost" ? "#c04632" : "#3c3b36";
+      s2.fillStyle = col;
+      s2.fillRect(x, 28, w - 2, H - 58);
+      if (i + 1 === S.acked) { s2.fillStyle = "#fbf9f2"; s2.fillRect(x, 10, w - 2, 4); }
+    }
+    s2.fillStyle = "#8a887f"; s2.font = "9px monospace";
+    s2.fillText("seq 1", 18, 14); s2.fillText("seq " + TOTAL, W - 52, 14);
+    s2.fillStyle = "#e8c96a";
+    s2.fillText("窗口 [" + Math.max(1, S.acked + 1) + " → " + Math.min(TOTAL, S.acked + Math.ceil(S.cwnd)) + "]", 20, H - 10);
+    s2.fillStyle = "#8a887f";
+    s2.fillText("绿=已确认 黄=在途 灰=待发 红=丢失", 200, H - 10);
+  }
+  function drawGraph() {
+    const W = gc.width, H = gc.height;
+    g.fillStyle = "#171614"; g.fillRect(0, 0, W, H);
+    const maxC = Math.max(32, Math.ceil(Math.max.apply(null, S.history.concat([S.cwnd, S.ssthresh]))) + 4);
+    g.strokeStyle = "#2c2b27"; g.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = H - 24 - (H - 40) * i / 4;
+      g.beginPath(); g.moveTo(46, y); g.lineTo(W - 12, y); g.stroke();
+      g.fillStyle = "#6f6d64"; g.font = "9px monospace";
+      g.fillText(String(Math.round(maxC * i / 4)), 14, y + 3);
+    }
+    const px = (r) => 46 + r * ((W - 60) / Math.max(1, 24));
+    const py = (c) => H - 24 - (c / maxC) * (H - 40);
+    g.strokeStyle = "#43424a"; g.setLineDash([4, 4]);
+    g.beginPath(); g.moveTo(46, py(S.ssthresh)); g.lineTo(W - 12, py(S.ssthresh)); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = "#a8812f"; g.font = "9px monospace";
+    g.fillText("ssthresh " + S.ssthresh, 50, py(S.ssthresh) - 5);
+    if (S.history.length > 1) {
+      g.strokeStyle = "#a8365e"; g.lineWidth = 2.2;
+      g.beginPath();
+      S.history.forEach((c, i) => { i === 0 ? g.moveTo(px(i), py(c)) : g.lineTo(px(i), py(c)); });
+      g.stroke();
+      const lastR = S.history.length - 1;
+      g.fillStyle = "#f4f1e8"; g.font = "bold 10px monospace";
+      g.fillText("cwnd " + S.cwnd, px(lastR) + 4, py(S.cwnd) - 6);
+      for (const m of S.marks) {
+        g.fillStyle = m.type === "timeout" ? "#c04632" : "#a8812f";
+        g.beginPath(); g.arc(px(m.round), py(m.c), 4, 0, 7); g.fill();
+        g.fillText(m.type === "timeout" ? "超时" : "快恢复", px(m.round) + 6, py(m.c) - 6);
+      }
+    }
+    g.fillStyle = "#8a887f"; g.font = "9px monospace";
+    g.fillText("RTT 轮次 →", W - 76, H - 8);
+  }
+  function render() {
+    drawStrip(); drawGraph();
+    $("#cc-phase").textContent = running ? phaseName(S.phase) : "未启动";
+    $("#cc-cwnd").textContent = S.cwnd + " 段";
+    $("#cc-ssthresh").textContent = S.ssthresh;
+    $("#cc-acked").textContent = S.acked + " / " + TOTAL;
+    $("#cc-phase").className = running ? (S.phase === "slowstart" ? "hot" : "okc") : "";
+  }
+  function advanceRound() {
+    // 1) 发送窗口内的包
+    let sent = 0;
+    for (const p of pkts) {
+      if (sent >= Math.floor(S.cwnd)) break;
+      if (p.state === "pending") { p.state = "flight"; sent++; }
+    }
+    // 2) RTT 结算：在途包全部确认（注入的丢失除外）
+    let lossRound = null;
+    for (const p of pkts) {
+      if (p.state === "lost") { p.state = "acked"; lossRound = "dup"; }   // 上轮标记的丢失 → 本轮 3 dup ack 到达
+      if (p.state === "flight") p.state = "acked";
+    }
+    S.acked = pkts.filter((p) => p.state === "acked").length;
+    // 3) 拥塞响应
+    if (lossRound === "dup") {
+      const old = S.cwnd;
+      S.ssthresh = Math.max(2, Math.floor(S.cwnd / 2));
+      S.cwnd = S.ssthresh + 3;
+      S.phase = "congestion-avoidance";
+      S.marks.push({ round: S.history.length, c: old, type: "3dup" });
+    } else if (S.phase === "slowstart") {
+      S.cwnd = Math.min(S.cwnd * 2, Math.max(S.ssthresh, S.cwnd + 1), TOTAL - S.acked || 1);
+      if (S.cwnd >= S.ssthresh) S.phase = "congestion-avoidance";
+    } else {
+      S.cwnd += 1;
+    }
+    if (S.acked >= TOTAL - S.injected) { running = false; clearInterval(timer); timer = null; }
+    S.history.push(S.cwnd);
+    render();
+  }
+  function inject(type) {
+    // 找一个在途或待发包标记为丢失
+    const target = pkts.find((p) => p.state === "flight") || pkts.find((p) => p.state === "pending");
+    if (target) target.state = "lost";
+    if (type === "timeout") {
+      const old = S.cwnd;
+      S.ssthresh = Math.max(2, Math.floor(S.cwnd / 2));
+      S.cwnd = 1;
+      S.phase = "slowstart";
+      S.marks.push({ round: S.history.length, c: old, type: "timeout" });
+      render();
+    } else {
+      // 3 dup-ack：在下一次 RTT 结算时触发快恢复
+      // 立即让一个 flight 包变 lost（下轮重传+快恢复）
+      render();
+    }
+  }
+  function start() {
+    if (running) return;
+    running = true;
+    S.injected = pkts.filter((p) => p.state === "lost").length;
+    render();
+    const rtt = +$("#cc-rtt").value;
+    timer = setInterval(advanceRound, rtt);
+  }
+  function reset() {
+    if (timer) { clearInterval(timer); timer = null; }
+    S.cwnd = 1; S.ssthresh = +$("#cc-ss").value; S.phase = "slowstart";
+    S.acked = 0; S.history = []; S.marks = [];
+    for (const p of pkts) p.state = "pending";
+    running = false;
+    render();
+  }
+  $("#cc-run").addEventListener("click", start);
+  $("#cc-ss").addEventListener("input", () => { if (!running) { S.ssthresh = +$("#cc-ss").value; render(); } $("#cc-ssth").textContent = $("#cc-ss").value; });
+  $("#cc-rtt").addEventListener("input", () => { $("#cc-rttv").textContent = $("#cc-rtt").value + " ms"; if (timer) { clearInterval(timer); timer = setInterval(advanceRound, +$("#cc-rtt").value); } });
+  $("#cc-drop-timeout").addEventListener("click", () => { if (!running) start(); inject("timeout"); });
+  $("#cc-drop-3dup").addEventListener("click", () => { if (!running) start(); inject("3dup"); });
+  $("#cc-reset2").addEventListener("click", reset);
+  $("#cc-ss").value = 8; $("#cc-rtt").value = 200;
+  $("#cc-ssth").textContent = "8"; $("#cc-rttv").textContent = "200 ms";
+  reset();
+})();
+
+/* ═══ 05 HTTP 缓存协商台（ETag / 304 真状态机）═══ */
+(() => {
+  const GO = $("#ca-go");
+  if (!GO) return;
+  const SIZE = 12.4;   // KB
+  const S = { etag: "a83f-5c2", version: 1, freshUntil: 0, hasCache: false, reqs: 0, saved: 0, t: 0, noCache: false };
+  function fmtTime(t) { return "T+" + t + "s"; }
+  function render(mode) {
+    const fresh = S.hasCache && S.freshUntil > S.t;
+    const logbox = $("#ca-log");
+    S.reqs++;
+    if (mode === "first") {
+      log("#ca-log", '<span class="q">▸ GET /index.html（缓存为空，必须走网络）</span>');
+      log("#ca-log", '<span class="a">◂ 200 OK · 12.4KB · ETag: "a83f-5c2" · Cache-Control: max-age=60</span>\n<span class="dim">  ↳ 存入本地缓存。新鲜期 60s。</span>');
+      $("#ca-state").textContent = "新鲜（剩 " + (S.freshUntil - S.t) + "s）";
+    } else if (S.noCache) {
+      log("#ca-log", '<span class="q">▸ GET /index.html（no-cache：每次都必须重验）</span>\n<span class="dim">  ↳ 附上 If-None-Match: "a83f-5c2"</span>');
+      log("#ca-log", '<span class="a">◂ 304 Not Modified（0 字节正文）</span>\n<span class="dim">  ↳ 资源没变，用本地副本。省 12.4KB。</span>');
+      S.saved += SIZE;
+      $("#ca-state").textContent = "已重验（仍新鲜）";
+    } else if (fresh) {
+      log("#ca-log", '<span class="q">▸ （在新鲜期内——请求根本没发出，直接读磁盘缓存）</span>');
+      S.saved += SIZE;
+      $("#ca-state").textContent = "新鲜（剩 " + (S.freshUntil - S.t) + "s）";
+    } else {
+      log("#ca-log", '<span class="q">▸ GET /index.html（已过期——带 If-None-Match: "a83f-5c2" 重验）</span>');
+      const changed = S.version > 1;
+      if (changed) {
+        S.etag = "b91c-8d4";
+        log("#ca-log", '<span class="bad">◂ 200 OK · 12.8KB · ETag: "b91c-8d4"</span>\n<span class="dim">  ↳ 资源真的变了，旧缓存作废，存新版本。</span>');
+        $("#ca-state").textContent = "已更新（新 ETag）";
+      } else {
+        log("#ca-log", '<span class="a">◂ 304 Not Modified（0 字节正文）</span>\n<span class="dim">  ↳ 资源没变，用本地副本。省 12.4KB。</span>');
+        S.freshUntil = S.t + 60;
+        $("#ca-state").textContent = "已重验（新新鲜期 60s）";
+      }
+      S.saved += SIZE;
+    }
+    $("#ca-reqs").textContent = S.reqs;
+    $("#ca-saved").textContent = S.saved.toFixed(1) + " KB";
+  }
+  GO.addEventListener("click", () => {
+    S.t += 3;
+    render(S.hasCache ? "sub" : "first");
+    if (!S.hasCache) { S.hasCache = true; S.freshUntil = S.t + 60; }
+  });
+  $("#ca-tick").addEventListener("click", () => { S.t += 70; log("#ca-log", '<span class="dim">⏩ 时间快进 70s（缓存的 max-age 60s 已过期）</span>'); $("#ca-state").textContent = S.hasCache ? "已过期（需重验）" : "空"; });
+  $("#ca-edit").addEventListener("click", () => { S.version++; log("#ca-log", '<span class="dim">✎ 服务器上的资源已修改（版本 ' + S.version + "）。下次重验会 200。</span>"); });
+  $("#ca-mode").addEventListener("click", () => {
+    S.noCache = !S.noCache;
+    $("#ca-mode").setAttribute("aria-pressed", String(S.noCache));
+    $("#ca-mode").textContent = S.noCache ? "Cache-Control: no-cache（开）" : "Cache-Control: no-cache";
+  });
+})();
+
+/* ═══ 06 TLS 握手解剖 ═══ */
+(() => {
+  const GO = $("#tls-step");
+  if (!GO) return;
+  const spyBox = $("#tls-spy");
+  const STEPS = [
+    { log: 'TCP 三次握手已完成（SYN → SYN+ACK → ACK）。端口 443。', spy: '看到了 TCP 握手：你的 IP → 服务器 IP:443。到此为止。', key: '未协商', prog: 0 },
+    { log: '<span class="q">▸ ClientHello（明文）</span>\n  支持的密码套件: TLS_AES_128_GCM_SHA256, …\n  随机数: 8f3a…（32 字节）\n  <span class="bad">SNI: www.example.com ← 明文！</span>', spy: '能知道你要访问 www.example.com（SNI 明文）。还不知道你要看哪个页面。', key: '未协商', prog: 1 },
+    { log: '<span class="q">▸ ServerHello + Certificate（明文）</span>\n  选定套件: TLS_AES_128_GCM_SHA256\n  证书链: example.com ← Let\u0027s Encrypt（有效期可见）\n  服务器随机数: 4b2e…', spy: '能拿到证书：域名、签发机构、有效期都是公开的。仍然看不到内容。', key: '未协商', prog: 2 },
+    { log: '<span class="q">▸ ClientKeyExchange + Finished（ECDHE）</span>\n  双方用对方随机数 + 自己私钥算出<b>会话密钥</b>\n  <span class="a">从这一帧起：全部密文。</span>', spy: '<span class="bad">只剩密文了。他知道你们在说话，不知道说了什么。</span>', key: '会话密钥已生成', prog: 3 },
+    { log: '<span class="hl">▸ ChangeCipherSpec + Finished（密文）</span>\n  双方确认密钥一致——握手完成，开始应用数据。', spy: '握手结束。计时长度仍可分析（流量分析），内容不可见。', key: '已就绪', prog: 4 },
+    { log: '<span class="hl">▸ 应用数据（全密文）</span>\n  GET /index.html → 200 OK → … 全部加密传输。\n  <span class="a">1-RTT 握手完成，比 TLS 1.2 少一个来回。</span>', spy: '他能画出「你访问了多久、传了多少」，画不出「访问了什么」。', key: '已就绪', prog: 5 }
+  ];
+  let step = 0;
+  function render() {
+    const st = STEPS[step];
+    log("#tls-log", st.log);
+    $("#tls-prog").textContent = st.prog + " / 5";
+    $("#tls-key").textContent = st.key;
+    const spyOn = $("#tls-spy").checked;
+    if (spyOn) {
+      spyBox.classList.add("bad");
+      $("#tls-spyknow").textContent = "密文与计时（" + (step <= 2 ? "含 SNI/证书" : "内容不可见") + "）";
+      $("#tls-spyknow").className = step <= 2 ? "hot" : "cool";
+    } else {
+      spyBox.classList.remove("bad");
+      $("#tls-spyknow").textContent = step >= 3 ? "什么都看不到（密文）" : st.spy.slice(0, 40);
+      $("#tls-spyknow").className = "";
+    }
+    // 窃听者视角注入 log
+    if (spyOn) log("#tls-log", '<span class="bad">👁 窃听者：' + st.spy + "</span>");
+  }
+  GO.addEventListener("click", () => { if (step < STEPS.length - 1) { step++; render(); } });
+  $("#tls-reset").addEventListener("click", () => { step = 0; $("#tls-log").innerHTML = '<span class="dim">// 重置。</span>'; render(); });
+  $("#tls-spy").addEventListener("change", render);
+  render();
+})();
+
+/* ═══ 07 HTTP/2 多路复用对比 ═══ */
+(() => {
+  const cv = $("#h2-cv");
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const RES = [
+    { name: "HTML", size: 12, dur: 300, stream: 1, color: "#e8c96a" },
+    { name: "CSS1", size: 40, dur: 400, stream: 3, color: "#7fae6a" },
+    { name: "CSS2", size: 60, dur: 900, stream: 5, color: "#c04632" },
+    { name: "JS1", size: 180, dur: 500, stream: 7, color: "#6a8fd0" },
+    { name: "JS2", size: 220, dur: 600, stream: 9, color: "#77588a" },
+    { name: "IMG", size: 90, dur: 450, stream: 11, color: "#4e9a8a" }
+  ];
+  const S = { slow: false, running: false };
+  let raf = null, t0 = 0;
+  function simulate(now) {
+    const t = (now - t0) / 1000;
+    const W = cv.width, H = cv.height;
+    ctx.fillStyle = "#171614"; ctx.fillRect(0, 0, W, H);
+    const slowK = S.slow ? 3 : 1;
+    // 六资源两栏
+    ctx.font = "10px monospace";
+    ctx.fillStyle = "#8a887f";
+    ctx.fillText("HTTP/1.1（六条并发连接 · 每条串行）", 30, 24);
+    ctx.fillText("HTTP/2（单连接 · 帧交错）", 470, 24);
+    // 1.1：每资源一条车道，串行排布（HTML 0-0.3s，然后各自连接并发，CSS2 占 0.9*3=2.7s）
+    const lane1Y = 40, laneH = 26, laneW = 370;
+    let finish11 = 0;
+    RES.forEach((r, i) => {
+      const y = lane1Y + i * laneH;
+      let start, dur;
+      if (i === 0) { start = 0; dur = r.dur / 1000; }
+      else if (r.name === "CSS2") { start = 0.3; dur = r.dur / 1000 * slowK; }
+      else { start = 0.3; dur = r.dur / 1000; }
+      finish11 = Math.max(finish11, start + dur);
+      const x = 30 + (start / Math.max(3, finish11)) * laneW;
+      const w = Math.max(6, (dur / Math.max(3, finish11)) * laneW);
+      ctx.fillStyle = r.color;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(x, y, w, laneH - 10);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#c9c4b4";
+      ctx.fillText(r.name, 30, y + laneH - 8);
+      if (r.name === "CSS2" && S.slow) {
+        ctx.fillStyle = "#c04632";
+        ctx.fillText("↑ 队头阻塞：JS 排在它后面干等", x + w + 8, y + 14);
+      }
+    });
+    // 2：帧交错
+    const lane2Y = lane1Y + RES.length * laneH + 20;
+    ctx.fillStyle = "#8a887f";
+    ctx.fillText("帧流（H2 单连接，帧按流标记交错）", 470, lane2Y - 6);
+    let finish2 = 0;
+    const frames = [];
+    RES.forEach((r) => {
+      const dur = r.dur / 1000 * (r.name === "CSS2" ? slowK : 1);
+      finish2 = Math.max(finish2, 0.3 + dur);
+      const n = Math.max(3, Math.round(dur / 0.05));
+      for (let k = 0; k < n; k++) frames.push({ stream: r.stream, t: 0.3 + (k / n) * dur, color: r.color, name: r.name });
+    });
+    frames.sort((a, b) => a.t - b.t);
+    const maxT = Math.max(3, finish2);
+    frames.forEach((f) => {
+      const x = 470 + (f.t / maxT) * (W - 500);
+      ctx.fillStyle = f.color;
+      ctx.fillRect(x, lane2Y + 4, 5, laneH * 2 - 4);
+    });
+    // 时间轴
+    ctx.strokeStyle = "#4a4844";
+    ctx.beginPath(); ctx.moveTo(470, lane2Y + laneH * 2 + 12); ctx.lineTo(W - 30, lane2Y + laneH * 2 + 12); ctx.stroke();
+    for (let e = 0; e <= 3; e++) {
+      const x = 470 + (e / 3) * (W - 500);
+      ctx.fillText(e.toFixed(1) + "s", x - 8, lane2Y + laneH * 2 + 28);
+    }
+    ctx.fillStyle = "#f4f1e8";
+    ctx.fillText("1.1: " + finish11.toFixed(2) + "s", 30, lane1Y + RES.length * laneH + 14);
+    ctx.fillStyle = "#9fd0b4";
+    ctx.fillText("H2: " + finish2.toFixed(2) + "s", 470, lane2Y + laneH * 2 + 46);
+    $("#h2-t1").textContent = finish11.toFixed(2) + " s";
+    $("#h2-t2").textContent = finish2.toFixed(2) + " s";
+    $("#h2-why").textContent = S.slow ? "CSS2 慢 → 1.1 的连接 2 被队头阻塞；H2 帧交错不受影响" : "不开慢速时差距主要来自 1.1 的每资源建连开销";
+    if (S.running) raf = requestAnimationFrame(simulate);
+    else { S.running = false; }
+  }
+  $("#h2-go").addEventListener("click", () => {
+    S.running = true;
+    if (raf) cancelAnimationFrame(raf);
+    t0 = performance.now();
+    raf = requestAnimationFrame(simulate);
+    setTimeout(() => { S.running = false; if (raf) cancelAnimationFrame(raf); simulate(performance.now()); }, 4200);
+  });
+  $("#h2-slow").addEventListener("change", () => { S.slow = $("#h2-slow").checked; if (S.running) return; simulate(performance.now()); });
+  $("#h2-reset").addEventListener("click", () => { S.running = false; if (raf) cancelAnimationFrame(raf); ctx.fillStyle = "#171614"; ctx.fillRect(0, 0, cv.width, cv.height); $("#h2-t1").textContent = "—"; $("#h2-t2").textContent = "—"; });
+  simulate(performance.now());
+  S.running = false;
 })();
 })();
 </script>
