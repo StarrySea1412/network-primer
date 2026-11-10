@@ -97,6 +97,23 @@ p{margin:0 0 1.15em}
 .logbox .hl{color:#f4f1e8;font-weight:700}
 .note-box{max-width:720px;margin:14px auto;border-left:3px solid var(--gold);background:var(--gold-soft);padding:10px 16px;font-size:13.5px;line-height:1.8;color:var(--ink-soft)}
 .note-box b{color:var(--gold)}
+
+.art-fig{max-width:760px;margin:22px auto;border:2px solid var(--black);border-radius:12px;background:var(--card);overflow:hidden;box-shadow:6px 6px 0 rgba(60,58,50,.16)}
+.art-fig img{display:block;width:100%}
+.art-fig .cap{padding:8px 14px;font-family:var(--mono);font-size:10px;color:var(--muted);border-top:1.5px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.art-fig .cap b{color:var(--red)}
+.pkt{max-width:760px;margin:18px auto;border:1.5px solid var(--line-strong);border-radius:8px;overflow:hidden;font-family:var(--mono)}
+.pkt .pkt-head{background:var(--card2);padding:6px 12px;font-size:9.5px;letter-spacing:.08em;color:var(--muted)}
+.pkt table{width:100%;border-collapse:collapse;font-size:11px}
+.pkt td{border:1.5px solid var(--line-strong);padding:6px 10px;text-align:center;line-height:1.5}
+.pkt td .b{display:block;font-size:9px;color:var(--faint)}
+.pkt td.hi{background:var(--glass-soft);color:#31536b;font-weight:700}
+.pkt td.seg{background:var(--ok-soft);color:#2d6a4a;font-weight:700}
+
+.tablewrap{max-width:100%;margin:16px 0;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--card);overflow-x:auto;box-shadow:var(--hard)}
+.tablewrap table{min-width:0;font-size:12.5px}
+.tablewrap th,.tablewrap td{padding:8px 12px;border-bottom:1px solid var(--line)}
+.tablewrap th{background:var(--card2);font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);text-align:left}
 </style>
 </head>
 <body>
@@ -130,7 +147,17 @@ p{margin:0 0 1.15em}
         <p>浏览器不认识 example.com，只认识 93.184.216.34。把名字变成数字的，是<b>递归解析器</b>和它身后的一整条问路链。</p>
       </div>
     </div>
-    <div class="prose"><p>第一次查询要走完全程：你的电脑问递归解析器，解析器不会答就去问<b>根服务器</b>（「.com 归谁管？」），根说去问 <b>.com TLD</b>，TLD 说去问 <b>权威服务器</b>，权威才给出最终答案——答案沿原路返回，每层顺手记在本子上（缓存）。TTL 一到，本子上的记录过期，一切重来。</p></div>
+    <div class="prose"><p>先分清两个常被混用的词：<b>递归查询</b>是你对解析器说的——「我只要结果，跑腿的事你做」；<b>迭代查询</b>是解析器对根/TLD/权威说的——「告诉我下一步该问谁，我自己去」。一个替你跑腿，一个自己问路，二者拼成完整的解析链。</p>
+    <p>每条 DNS 记录都带着 <strong>TTL（生存时间）</strong>，单位秒。TTL 是一把双刃剑：设 3600s，缓存命中率高、解析快，但网站换 IP 后全世界最长要记一小时旧地址；设 60s，切换灵活、解析量翻十倍。Cloudflare 免费版默认 300s，企业切换窗口前会把 TTL 预先降到 60——<em>先降 TTL、等旧值过期、再切 IP、最后升回</em>，这是运维切换 DNS 的标准四步。</p>
+    <p>真正的查询报文长这样（DNS 协议规定的固定结构，不是抽象概念）：</p></div>
+    <div class="pkt"><div class="pkt-head">DNS 查询报文 · UDP 端口 53 · 实测 31 字节（wireshark 原样字段）</div>
+      <table><tbody>
+        <tr><td class="hi">Transaction ID<div class="b">16 bit · 随机匹配应答</div></td><td class="hi">Flags<div class="b">16 bit · 递归请求</div></td><td>Questions<div class="b">1</div></td><td>Answer RRs<div class="b">0</div></td></tr>
+        <tr><td colspan="2">QNAME<div class="b">www.example.com（逐段长度前缀）</div></td><td>QTYPE<div class="b">A（IPv4）</div></td><td class="hi">QCLASS<div class="b">IN（Internet）</div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="prose"><p>两个安全细节值得知道：①<b>缓存投毒</b>——伪造 Transaction ID 匹配的假应答污染解析器缓存，Kaminsky 攻击在 2008 年演示后 DNSSEC 才加速部署；②<b>运营商 DNS 劫持</b>——部分 ISP 把解析失败跳到广告页，App 开发者的对策是 <code>HTTPDNS</code>：绕过 UDP 53，用 HTTPS 直接问云厂商的解析服务。</p>
+    <p>前端还有一手零成本的：<code>&lt;link rel="dns-prefetch" href="//api.example.com"&gt;</code>——页面加载早期就预解析第三方域，等 JS 真要请求时缓存已经热了，<b>白省 100ms 以上</b>。</p></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 01 · DNS 解析台</span><span class="demo-title">八步问路，一步不少<span class="hint">点「查询」看动画</span></span></div>
       <div class="demo-body">
@@ -154,6 +181,7 @@ p{margin:0 0 1.15em}
       <div class="demo-foot">确定性模拟：各跳延迟按真实量级预设（根 ~15ms / TLD ~20ms / 权威 ~25ms）。「清空缓存」后重查会走全程——这就是为什么第一次打开网站总是最慢的。</div>
     </div>
     <div class="note-box"><b>为什么要有缓存：</b>全球每天几千亿次查询，如果每次都打到根服务器，根会把全世界拖垮。TTL（生存时间）就是每条记录的保质期——网站换 IP 时，最长要等旧 TTL 过期，全世界的缓存才肯忘掉旧地址。</div>
+    <div class="art-fig"><img src="assets/art/dns.webp" alt="折纸信鸽翻阅巨大的纸质电话簿" loading="lazy"/><div class="cap"><span>FIG. A · 电话簿：把名字查成数字的第一站</span><span>PAPER CRAFT / 2026</span></div></div>
   </div>
 </section>
 
@@ -165,7 +193,18 @@ p{margin:0 0 1.15em}
         <p>拿到 IP 之后，还不能直接要数据——要先和服务器<b>握三次手</b>，同步两边的「计数器」。计数器对上了，连接才算建立。</p>
       </div>
     </div>
-    <div class="prose"><p>三次握手：客户端发 <code>SYN (seq=x)</code>「我想说话，我的计数从 x 开始」；服务器回 <code>SYN+ACK (seq=y, ack=x+1)</code>「收到 x，我这边从 y 开始」；客户端再回 <code>ACK (ack=y+1)</code>「收到 y」。一来一回一回，双方都确认了「我能说、你能听、我能听」。</p></div>
+    <div class="prose"><p>三次握手的本质是<b>同步双方的初始序号（ISN）</b>。序号是 TCP 可靠性的地基：每个字节都有编号，确认号 = 收到的最后一个字节 + 1。ISN 随机化还有安全意义——如果从 0 开始，攻击者可以预测序号伪造连接。</p>
+    <p>一个真实的握手报文段（wireshark 原样字段）：</p></div>
+    <div class="pkt"><div class="pkt-head">TCP SYN 段 · IP 共 60 字节（含选项）</div>
+      <table><tbody>
+        <tr><td class="hi">源端口<div class="b">52000（随机）</div></td><td class="hi">目标端口<div class="b">443（HTTPS）</div></td><td class="seg">Seq<div class="b">ISN 随机化</div></td></tr>
+        <tr><td class="seg">Flags<div class="b">SYN=1</div></td><td>Window<div class="b">65535（接收窗）</div></td><td>Options<div class="b">MSS 1460 · SACK · 时间戳</div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="prose"><p>注意 MSS（最大段 1460B）在握手里就协商好了——它是 MTU 1500 减去 IP 头 20 和 TCP 头 20。之后的数据段谁也不会超过它，<b>避免 IP 层分片</b>。</p></div>
+    <div class="prose"><p>「为什么不是两次」的经典追问值得完整论证：若只有两次，服务器发完 SYN+ACK 就认为连接建立并分配缓冲区——但这个包若在路上迟到，客户端早已放弃，服务器的缓冲区就被一个永远不会有数据的「幽灵连接」占着。三次握手的第三次 ACK 让<b>客户端对服务器说一句收到</strong>，双方各确认一次对方的收发能力，缺一不可。四次则纯属冗余——SYN+ACK 本来就可以捎带。</p>
+    <p>还有个高并发服务器绕不开的名词：<strong>TIME_WAIT</strong>。主动关闭的一方在连接消失后要等 <code>2MSL</code>（Linux 60s）才释放端口——为了网络中迟到的旧包自然死亡。压测时「Cannot assign requested address」就是本机端口耗尽，解法是 <code>tcp_tw_reuse</code> 而不是暴力缩 MSL。</p></div>
+    <div class="art-fig"><img src="assets/art/tcp.webp" alt="两只纸杯电话间，信鸽沿绳线驮着带红蜡封信封飞行" loading="lazy"/><div class="cap"><span>FIG. B · 报文是信鸽，握手是暗号</span><span>PAPER CRAFT / 2026</span></div></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 02 · TCP 连接台</span><span class="demo-title">握手 → 传数据 → 看丢包重传<span class="hint">逐步发车</span></span></div>
       <div class="demo-body">
@@ -195,7 +234,11 @@ p{margin:0 0 1.15em}
         <p>握手只是开机。真正决定「多快传完」的是两台发动机：<b>滑动窗口</b>决定一次发多少，<b>拥塞控制</b>决定窗口开多大——慢启动、AIMD、快恢复，全是真实算法。</p>
       </div>
     </div>
-    <div class="prose"><p>两条铁律：①接收方有缓冲上限（流量控制，rwnd）；②网络有承载上限（拥塞控制，cwnd）。发送方每过一个 RTT 才能学到一次「网络受不受得了」——慢启动阶段每 RTT 窗口翻倍，撞上丢包后减半，再线性爬升。<b>那条锯齿线，就是互联网上每一笔流量真实走过的形状。</b></p></div>
+    <div class="prose"><p>两条铁律：①接收方有缓冲上限（流量控制，rwnd）；②网络有承载上限（拥塞控制，cwnd）。发送方每过一个 RTT 才能学到一次「网络受不受得了」——慢启动阶段每 RTT 窗口翻倍，撞上丢包后减半，再线性爬升。<b>那条锯齿线，就是互联网上每一笔流量真实走过的形状。</b></p>
+    <p>「慢启动」这个名字是历史误称——它一点都不慢，是<b>指数级</b>的增长（1→2→4→8），慢的是「增长的速度会变慢」。真正慢的是 AIMD 阶段的线性 +1。这四个算法的进化史就是三十年互联网的编年史：Tahoe（1988，丢包即回1）→ Reno（加快恢复）→ CUBIC（2006，Linux 默认，用三次函数替代线性）→ <b>BBR</b>（2016，Google 闭门三年后开源——不看丢包看带宽时延积，Kubernetes 集群与 Google 全站部署后平均吞吐提升 4%，某些弱网线路提升 25 倍）。</p>
+    <p>锯齿还有一个容易被忽略的意义：<b>它是共享网络的公平性机制</b>。多条流挤同一条链路，丢包时各自减半——占带宽多的流掉得最狠，几轮之后大家趋同。AIMD 的「加性增、乘性减」在数学上被证明会收敛到公平分配。换句话说，互联网没有中央交通局，秩序全靠每张网卡自觉执行同一套算法。</p></div>
+    <div class="note-box"><b>BBR 的一句话本质：</b>传统算法把「丢包」当「拥塞」（WiFi 下丢包只是无线干扰，根本不拥塞）；BBR 直接测量瓶颈带宽 × 最小 RTT——这条乘积就是链路真正的容量。代价是公平性争议：BBR 流会挤压 CUBIC 流。</div>
+    <div class="art-fig"><img src="assets/art/congestion.webp" alt="纸质公路瓶颈收费口上的流量表盘与信鸽交通员" loading="lazy"/><div class="cap"><span>FIG. C · 拥塞控制：给每辆车发一张通行时刻表</span><span>PAPER CRAFT / 2026</span></div></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 03 · 拥塞控制台</span><span class="demo-title">看 cwnd 的锯齿怎么长出来<span class="hint">真实慢启动/AIMD/快恢复</span></span></div>
       <div class="demo-body">
@@ -231,7 +274,15 @@ p{margin:0 0 1.15em}
         <p>你的「你好」发出去之前被套了四层信封：HTTP 套进 TCP、TCP 套进 IP、IP 套进以太网帧——每层只管拆自己那层。</p>
       </div>
     </div>
-    <div class="prose"><p>分层的意义是<b>各管一段</b>：应用层管「说什么」，传输层管「可靠送达」，网络层管「走哪条路」，链路层管「这一跳怎么过」。收信方按相反顺序拆信封，每拆一层，就多知道一件事该交给谁。</p></div>
+    <div class="prose"><p>分层的意义是<b>各管一段</b>：应用层管「说什么」，传输层管「可靠送达」，网络层管「走哪条路」，链路层管「这一跳怎么过」。收信方按相反顺序拆信封，每拆一层，就多知道一件事该交给谁。</p>
+    <p>但分层是有<b>真实税收</b>的——每层都要收费（头），算一笔 1KB HTTP 响应的完整账：</p></div>
+    <div class="pkt"><div class="pkt-head">以太网帧 · 一字节不差的封装账单（MTU 1500）</div>
+      <table><tbody>
+        <tr><td>前导码<div class="b">8B（不入帧）</div></td><td>帧头<div class="b">14B</div></td><td class="hi">IPv4 头<div class="b">20B</div></td><td class="hi">TCP 头<div class="b">20–32B</div></td><td class="seg">载荷<div class="b">≤1460B = MSS</div></td><td>FCS<div class="b">4B</div></td><td>帧间隙<div class="b">12B</div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="prose"><p>MSS 1460 = MTU 1500 − IP 头 20 − TCP 头 20。你的 12.4KB HTML 会被切成 <code>⌈12.4KB / 1460⌉ = 9</code> 个段——每段独立编序号、独立确认。若中间某条链路 MTU 只有 1492（PPPoE），路由器要么分片（IP 头里 DF 标志禁止时分片，允许时拆成多片、任一片丢则整包重传）要么回 ICMP「需要分片」——<b>PMTUD 黑洞</b>是 VPN 用户「能连但打不开网页」的经典病因。</p>
+    <p>再算一笔<b>头部税</b>：1460B 载荷配 54B 开销，效率 96%——很健康。但发一个 41 字节的 TCP 纯 ACK（无载荷），开销占比 132%。<em>小包的头部税远重于大包</em>，这就是 Nagle 算法（攒小包合并发）与它和延迟敏感场景冲突（TCP_NODELAY）永恒拉扯的原因。</p></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 03 · 封装台</span><span class="demo-title">一层一层套，一层一层拆<span class="hint">发送方 ⇄ 接收方</span></span></div>
       <div class="demo-body">
@@ -263,7 +314,9 @@ p{margin:0 0 1.15em}
         <p>HTTPS = HTTP over TLS。TLS 握手是「在不安全信道上商量出一把只有双方知道的钥匙」——而这一步<b>本身必须是明文的</b>，所以每一帧谁可见、谁不可见，都有明确边界。</p>
       </div>
     </div>
-    <div class="prose"><p>逐步走一遍 TLS 1.3 握手，右边同步显示「窃听者视角」：他能看到域名（SNI 明文）、证书链、握手时长——但看不到路径、Cookie、正文。<b>一个常被忽视的细节：</b>SNI（服务器名称指示）在 ClientHello 里是明文的，这正是 ECH（Encrypted Client Hello）要修的最后一个明文缺口。</p></div>
+    <div class="prose"><p>逐步走一遍 TLS 1.3 握手，右边同步显示「窃听者视角」：他能看到域名（SNI 明文）、证书链、握手时长——但看不到路径、Cookie、正文。<b>一个常被忽视的细节：</b>SNI（服务器名称指示）在 ClientHello 里是明文的，这正是 ECH（Encrypted Client Hello）要修的最后一个明文缺口。</p>
+    <p>三个进阶概念值得拥有：①<b>前向保密</b>——ECDHE 每次握手生成全新临时密钥对，就算服务器私钥明天泄露，历史流量也解不开（RSA 密钥交换没有这个性质，所以已被 TLS 1.3 移除）；②<b>会话复用</b>——Session Ticket 让老客免握手直达 0-RTT 发数据，代价是重放攻击面，只该用于幂等请求；③<b>1.2 与 1.3 的 RTT 差</b>——1.2 要 2-RTT，1.3 把密钥交换参数直接塞进 ClientHello 压到 1-RTT。跨洋连接上这就是省 200ms——<em>协议版本本身就是性能优化</em>。</p>
+    <p>还有一个运维层的真相：TLS 握手的 CPU 开销（非对称加密）约是单次 HTTP 请求的 10 倍，所以高流量站点必须做<b>会话票据复用</b>，否则握手 CPU 就成了瓶颈——Cloudflare 公开过他们每秒百万次握手的优化笔记。</p></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 06 · TLS 握手解剖</span><span class="demo-title">明文与密文的边界<span class="hint">逐步 + 窃听者视图</span></span></div>
       <div class="demo-body">
@@ -294,7 +347,10 @@ p{margin:0 0 1.15em}
         <p>HTTP/1.1 一个连接一次只能跑一个请求——前面慢了，后面全堵着。HTTP/2 把报文切成帧，多个流在一条连接上<b>交错传输</b>。</p>
       </div>
     </div>
-    <div class="prose"><p>让 CSS2 慢 3 秒试试：HTTP/1.1 的连接 2 上，排在它后面的 JS 只能干等（<b>队头阻塞</b>）；HTTP/2 里 CSS2 的帧稀疏插入，其他流的帧照常穿行。代价是 TCP 层的丢包仍然阻塞所有流——所以 QUIC 干脆把可靠传输也重做了。</p></div>
+    <div class="prose"><p>让 CSS2 慢 3 秒试试：HTTP/1.1 的连接 2 上，排在它后面的 JS 只能干等（<b>队头阻塞</b>）；HTTP/2 里 CSS2 的帧稀疏插入，其他流的帧照常穿行。代价是 TCP 层的丢包仍然阻塞所有流——所以 QUIC 干脆把可靠传输也重做了。</p>
+    <p>HTTP/2 还有一堆「没那么成功的遗产」值得记住：<b>服务器推送</strong>被证明几乎没用（推什么由服务器猜，猜错就是浪费带宽），Chrome 在 2022 年移除了它；<b>HPACK 头压缩</b>用静态表 + 动态表把每次重复的 Cookie/UA 从几 KB 压到几十字节——这个倒是实实在在活了下来。<em>技术的演进不是每一个 feature 都值得学习，有些 feature 的价值就是「被验证走不通」。</em></p>
+    <p>而下一站 QUIC（HTTP/3）把整个传输层搬进了 UDP：连接 ID 让 WiFi→蜂窝切换不断线、0-RTT 恢复会话、流之间真正独立的丢包重传。它的普及率正以每年 10 个百分点的速度爬升——你读这篇的浏览器很可能已经在用了。</p></div>
+    <div class="art-fig"><img src="assets/art/waterfall.webp" alt="由彩色纸条组成的瀑布图与拿秒表的信鸽" loading="lazy"/><div class="cap"><span>FIG. E · 瀑布图：前端性能优化的第一张处方笺</span><span>PAPER CRAFT / 2026</span></div></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 07 · 多路复用台</span><span class="demo-title">1.1 队头阻塞 vs 2 流交错<span class="hint">让一个资源变慢</span></span></div>
       <div class="demo-body">
@@ -324,6 +380,19 @@ p{margin:0 0 1.15em}
       </div>
     </div>
     <div class="prose"><p>选一个状态码，看服务器怎么答、浏览器接着做什么。<b>301 和 404 的区别</b>不只是数字：301 会触发浏览器再发一次请求（去新地址），404 只是展示错误页——重定向是有成本的，每 301 一次就是一次额外的完整往返。</p></div>
+    <div class="art-fig"><img src="assets/art/layers.webp" alt="四只由大到小的信封嵌套与放大镜" loading="lazy"/><div class="cap"><span>FIG. D · 缓存协商：先问有没有变，再决定要不要下</span><span>PAPER CRAFT / 2026</span></div></div>
+    <div class="prose"><p>但真正决定「快不快」的是下面这套<b>缓存策略矩阵</strong>——现代浏览器支持两种缓存，适用场景完全不同：</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>策略</th><th>机制</th><th>适用</th><th>坑</th></tr></thead>
+      <tbody>
+        <tr><td><b>强缓存</b> Cache-Control: max-age=31536000, immutable</td><td>新鲜期内<b>请求根本不发</b>，直接读磁盘</td><td>带内容指纹的静态资源（app.a83f.js）</td><td>忘了 immutable，刷新仍会发条件请求</td></tr>
+        <tr><td><b>协商缓存</b> ETag / Last-Modified</td><td>每次发 If-None-Match，没变回 304</td><td>HTML（内容会变但希望省带宽）</td><td>集群多机 ETag 不一致 → 304 全变 200</td></tr>
+        <tr><td><b>no-cache</b></td><td>可以缓存，但每次用前必须重验</td><td>会变化的数据接口</td><td>名字骗人——不是「不缓存」</td></tr>
+        <tr><td><b>no-store</b></td><td>彻底不落盘</td><td>密码、验证码、身份证号</td><td>性能上等于放弃了 HTTP 的最大红利</td></tr>
+      </tbody>
+    </table></div>
+    <p>而工程上的黄金组合是：<strong>HTML 用 no-cache（保证入口永远新鲜），静态资源带指纹 + max-age=1 年 immutable（永远命中强缓存）</strong>。改版时只发布新的 HTML，旧资源文件名变了自然失效——这套组合让「更新代码」和「全量缓存」两个矛盾目标同时成立。</p>
+    <p>再往上一层是 <b>CDN</b>：它就是布置在全球几百个节点的共享缓存层，边缘节点未命中才回源。静态资源上 CDN 后，TTFB 从跨洋 150ms 缩到同省 15ms——<em>一个 header 配置的收益超过任何代码优化</em>。</p></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 05 · 缓存协商台</span><span class="demo-title">ETag / 304 / max-age 真状态机<span class="hint">发请求 · 快进 · 改资源</span></span></div>
       <div class="demo-body">
@@ -356,7 +425,9 @@ p{margin:0 0 1.15em}
         <p>从你家路由器到太平洋对岸的服务器，一个包要经过十几台路由器。每台路由器做同一件事：<b>看一眼目标 IP，查表选下一跳，TTL 减一</b>。</p>
       </div>
     </div>
-    <div class="prose"><p>TTL（生存时间）是 IP 头里的一个小计数器，发包时设为 64，每过一台路由器减一，减到 0 就地丢弃——没有它，一个配置错误的包会在网络里永远打转。traceroute 正是利用这个机制：故意发 TTL=1、2、3… 的包，逼每台路由器「自报家门」。</p></div>
+    <div class="prose"><p>TTL（生存时间）是 IP 头里的一个小计数器，发包时设为 64，每过一台路由器减一，减到 0 就地丢弃——没有它，一个配置错误的包会在网络里永远打转。traceroute 正是利用这个机制：故意发 TTL=1、2、3… 的包，逼每台路由器「自报家门」。</p>
+    <p>但 traceroute 的输出里有大量「假象」需要解读：<b>某跳全是 <code>* * *</code> 不一定是故障</strong>——很多核心路由器对 ICMP TTL 超时做了限速（甚至完全不回），流量照常通过；<b>某些跳的延迟突然变小</b>也不是时光倒流——各跳回包走的不同路径，RTT 本来就不能逐跳相加。读 traceroute 是读<b>趋势</strong>，不是读绝对值。</p>
+    <p>而「路由表是谁写的」这个问题指向互联网的另一个层：<b>BGP（边界网关协议）</b>。自治系统（AS）之间用 BGP 互相广播「我能到达这些网段」，全球几十万条路由公告构成的这张表，就是互联网的骨架。2021 年 Facebook 断网 6 小时的直接原因就是一次 BGP 回收——把自家路由撤了，全球 DNS 都找不到它。<em>网络层的「DNS 挂了」往往其实是「BGP 挂了」。</em></p></div>
     <div class="demo">
       <div class="demo-head"><span class="demo-tag">互动 05 · 路由追踪台</span><span class="demo-title">一跳一跳，把路走出来<span class="hint">点「发一个包」</span></span></div>
       <div class="demo-body">
@@ -379,10 +450,42 @@ p{margin:0 0 1.15em}
       <div class="demo-foot">确定性拓扑：家庭路由 → 城域网 → 省级出口 → 骨干网 → 海底光缆 → 机房边缘 → 目标服务器。RTT 逐跳累计，突变的那一跳通常就是「跨洋」——延迟的大头永远在物理距离。</div>
     </div>
     <div class="note-box"><b>读 traceroute 的技巧：</b>看<b>增量</b>而不是绝对值。第 3→4 跳突然从 8ms 跳到 160ms？跨海了。某跳后面全是 * * *？那台路由器不回 ICMP，但流量照常通过——不一定是坏了。</div>
+    <div class="art-fig"><img src="assets/art/route.webp" alt="折纸地图上钉着编号路线图钉，信鸽驮信飞过纸城" loading="lazy"/><div class="cap"><span>FIG. F · 路由：每一跳都在地图上留名</span><span>PAPER CRAFT / 2026</span></div></div>
   </div>
 </section>
 
-<section class="sect" id="s9">
+<section class="sect" id="sw">
+  <div class="wrap">
+    <div class="sect-head">
+      <div class="sect-num"><b>07+</b>CHAPTER<br/>总装</div>
+      <div><h2>总装：一次页面加载的完整瀑布</h2>
+        <p>把前八章全部拼起来——这就是 DevTools 网络面板同款的瀑布图：每个资源的 DNS、TCP、TLS、TTFB、Content 五段式分解。</p>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="demo-head"><span class="demo-tag">互动 07 · 页面加载瀑布</span><span class="demo-title">七种资源 × 四段旅程 × 三种开关<span class="hint">拖协议 / 缓存 / 慢资源</span></span></div>
+      <div class="demo-body">
+        <div class="controls" style="padding-top:0;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:10px">
+          <div class="ctl-btn" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span class="chip" id="wf-proto" aria-pressed="false">HTTP/2</span>
+            <span class="chip" id="wf-cache">首次访问（无缓存）</span>
+            <span class="chip" id="wf-slowjs">JS1 慢 3×</span>
+            <button class="btn ghost" id="wf-reset">重置</button>
+          </div>
+        </div>
+        <div class="stage" style="padding:0"><canvas id="wf-cv" width="880" height="430"></canvas></div>
+        <div class="readout">
+          <div class="rd">总加载时间<b class="hot" id="wf-t">—</b></div>
+          <div class="rd">传输量<b id="wf-bytes">—</b></div>
+          <div class="rd">请求数<b id="wf-reqs">—</b></div>
+          <div class="rd">瓶颈<b id="wf-bottle">—</b></div>
+        </div>
+      </div>
+      <div class="demo-foot">分段配色：<b>金=DNS / 红=TCP / 紫=TLS / 蓝=TTFB / 绿=Content</b>。首次访问第一个资源（HTML）走完整 DNS+TCP+TLS；缓存开启后静态资源直接「(disk cache)」零网络；HTTP/2 下六资源共享一条连接的握手段。切 HTTP/1.1 看六条连接各建各的握手开销。</div>
+    </div>
+    <div class="prose"><p>读瀑布图的三个动作：<b>找最长的那根条</strong>（瓶颈）、<b>看有没有把红线拆开</strong>（DNS/TCP/TLS 是否复用）、<b>数最后一块绿色出现的时间</strong>（首屏完成点）。所有性能优化的效果，最终都要在这张图上兑现。</p></div>
+  </div>
+</section><section class="sect" id="s9">
   <div class="wrap">
     <div class="sect-head">
       <div class="sect-num"><b>09</b>第九章</div>
@@ -1162,6 +1265,147 @@ const srand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return se
   $("#h2-reset").addEventListener("click", () => { S.running = false; if (raf) cancelAnimationFrame(raf); ctx.fillStyle = "#171614"; ctx.fillRect(0, 0, cv.width, cv.height); $("#h2-t1").textContent = "—"; $("#h2-t2").textContent = "—"; });
   simulate(performance.now());
   S.running = false;
+})();
+
+/* ═══ 07+ 总装瀑布图（页面加载全时序 · DevTools 同款）═══ */
+(() => {
+  const cv = $("#wf-cv");
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const RES = [
+    { name: "index.html", size: 12.4, ttfb: 90, dns: true },
+    { name: "style.css", size: 40, ttfb: 45 },
+    { name: "app.js", size: 220, ttfb: 70 },
+    { name: "jquery.js", size: 90, ttfb: 55 },
+    { name: "analytics.js", size: 45, ttfb: 120 },
+    { name: "banner.webp", size: 150, ttfb: 65 },
+    { name: "avatar.jpg", size: 60, ttfb: 50 }
+  ];
+  const PHASES = [
+    { key: "dns", label: "DNS", color: "#a8812f" },
+    { key: "tcp", label: "TCP", color: "#c04632" },
+    { key: "tls", label: "TLS", color: "#77588a" },
+    { key: "ttfb", label: "TTFB", color: "#5b7f94" },
+    { key: "content", label: "Content", color: "#3f8f5f" }
+  ];
+  const S = { proto: "h2", cache: false, slow: false };
+  const DNS_MS = 62, TCP_MS = 80, TLS_MS = 90, BANDWIDTH = 2200;  // KB/s 有效带宽
+  function simulate() {
+    const rows = [];
+    let connOpen = S.proto === "h2" ? null : [];  // h1: 每连接占用到完成
+    let sharedConn = null;   // h2 共享连接的 {dnsEnd, tcpEnd, tlsEnd}
+    let cursor = 0;          // 全局时间游标
+    RES.forEach((r, i) => {
+      const row = { ...r, phases: [] };
+      let t = 0;
+      const cached = S.cache && i > 0;   // HTML 永远走网络，其余走缓存
+      const dns = (i === 0 && !S.cache) ? DNS_MS : 0;
+      const tcp = cached ? 0 : (i === 0 ? TCP_MS : (S.proto === "h1" ? TCP_MS : 0));
+      const tls = cached ? 0 : (i === 0 ? TLS_MS : (S.proto === "h1" && i <= 5 ? TLS_MS : 0));
+      let pre = 0;
+      if (dns) { row.phases.push(["dns", 0, dns]); pre = dns; }
+      if (tcp) { row.phases.push(["tcp", pre, pre + tcp]); pre += tcp; }
+      if (tls) { row.phases.push(["tls", pre, pre + tls]); pre += tls; }
+      // TTFB：排队（h1 连接池占用）+ 服务器思考
+      let wait = 0;
+      if (S.proto === "h1" && i > 0) {
+        // h1 浏览器最多 6 并发连接；7 个资源 → 第 7 个排队
+        // 且每条连接要独占：上一个资源完成后才开始本资源的 TTFB
+        const prev = rows[i - 1];
+        const prevEnd = prev ? prev.end : 0;
+        wait = Math.max(pre, prevEnd);
+      }
+      const ttfb = cached ? 0 : r.ttfb * (S.slow && r.name === "app.js" ? 3 : 1);
+      if (!cached) row.phases.push(["ttfb", Math.max(pre, wait), Math.max(pre, wait) + ttfb]);
+      const content = cached ? 0 : (r.size / BANDWIDTH) * 1000;
+      if (!cached) {
+        const cStart = Math.max(pre, wait) + ttfb;
+        row.phases.push(["content", cStart, cStart + content]);
+      }
+      row.end = cached ? 0 : Math.max(...row.phases.map((p) => p[2]));
+      row.cached = cached;
+      row.dnsUsed = dns > 0;
+      rows.push(row);
+    });
+    return rows;
+  }
+  function render() {
+    const W = cv.width, H = cv.height;
+    ctx.fillStyle = "#171614"; ctx.fillRect(0, 0, W, H);
+    const rows = simulate();
+    const maxT = Math.max.apply(null, rows.map((r) => r.end)) || 1000;
+    const rowH = 34, rowGap = 6;
+    const X0 = 110, X1 = W - 110;
+    const px = (ms) => X0 + (ms / maxT) * (X1 - X0);
+    // 相位图例
+    let lx = X0;
+    ctx.font = "9px monospace";
+    for (const ph of PHASES) {
+      ctx.fillStyle = ph.color;
+      ctx.fillRect(lx, 12, 10, 10);
+      ctx.fillStyle = "#8a887f";
+      ctx.fillText(ph.label, lx + 14, 21);
+      lx += 14 + ctx.measureText(ph.label).width + 24;
+    }
+    ctx.fillStyle = "#f4f1e8";
+    ctx.fillText((S.proto === "h2" ? "HTTP/2" : "HTTP/1.1") + (S.cache ? " · 二次访问" : " · 首次访问"), W - 190, 21);
+    let finish = 0, bytes = 0, reqs = 0;
+    rows.forEach((r, i) => {
+      const y = 44 + i * (rowH + rowGap);
+      ctx.fillStyle = "#c9c4b4";
+      ctx.font = "10px monospace";
+      ctx.fillText(r.name, 8, y + rowH / 2 + 4);
+      if (r.cached) {
+        ctx.fillStyle = "#6f6d64";
+        ctx.fillText("(disk cache)", X0 + 10, y + rowH / 2 + 4);
+      } else {
+        reqs++;
+        bytes += r.size;
+        finish = Math.max(finish, r.end);
+        for (const [key, s0, s1] of r.phases) {
+          const ph = PHASES.find((x) => x.key === key);
+          ctx.fillStyle = ph.color;
+          ctx.fillRect(px(s0), y, Math.max(2, px(s1) - px(s0)), rowH);
+        }
+        // 阶段分隔线
+        for (const [key, s0, s1] of r.phases) {
+          ctx.strokeStyle = "#171614"; ctx.lineWidth = 1;
+          ctx.strokeRect(px(s0), y, px(s1) - px(s0), rowH);
+        }
+      }
+    });
+    // 总时间轴
+    ctx.strokeStyle = "#4a4844";
+    ctx.beginPath(); ctx.moveTo(X0, 44 + rows.length * (rowH + rowGap) + 6); ctx.lineTo(X1, 44 + rows.length * (rowH + rowGap) + 6); ctx.stroke();
+    for (let e = 0; e <= 4; e++) {
+      const x = X0 + (e / 4) * (X1 - X0);
+      ctx.fillStyle = "#6f6d64";
+      ctx.fillText(Math.round(maxT * e / 4) + "ms", x - 12, 44 + rows.length * (rowH + rowGap) + 24);
+    }
+    $("#wf-t").textContent = Math.round(maxT) + " ms";
+    $("#wf-bytes").textContent = bytes.toFixed(0) + " KB";
+    $("#wf-reqs").textContent = reqs + " / " + RES.length;
+    let bottleneck = "连接握手（首次固定成本）";
+    if (S.slow) bottleneck = "app.js 服务器思考（×3）";
+    else if (S.cache) bottleneck = "只剩 HTML（其余全走缓存）";
+    else if (S.proto === "h1") bottleneck = "6 条连接各自重复握手（TLS ×6）";
+    $("#wf-bottle").textContent = bottleneck;
+  }
+  function bindChip(id, key, onLabel, offLabel) {
+    $(id).addEventListener("click", () => {
+      S[key] = !S[key];
+      $(id).setAttribute("aria-pressed", String(S[key]));
+      if (key === "cache") $(id).textContent = S.cache ? "二次访问（有缓存）" : "首次访问（无缓存）";
+      if (key === "proto") $(id).textContent = S.proto === "h2" ? "HTTP/1.1" : "HTTP/2";
+      if (key === "slow") $(id).textContent = S.slow ? "JS1 慢 3×（开）" : "JS1 慢 3×";
+      render();
+    });
+  }
+  bindChip("#wf-proto", "proto");
+  bindChip("#wf-cache", "cache");
+  bindChip("#wf-slowjs", "slow");
+  $("#wf-reset").addEventListener("click", () => { S.proto = "h2"; S.cache = false; S.slow = false; $("#wf-proto").setAttribute("aria-pressed", "false"); $("#wf-proto").textContent = "HTTP/2"; $("#wf-cache").textContent = "首次访问（无缓存）"; $("#wf-cache").setAttribute("aria-pressed", "false"); $("#wf-slowjs").textContent = "JS1 慢 3×"; $("#wf-slowjs").setAttribute("aria-pressed", "false"); render(); });
+  render();
 })();
 })();
 </script>
